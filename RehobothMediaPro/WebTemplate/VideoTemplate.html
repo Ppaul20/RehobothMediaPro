@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial;
+            font-size: 17px;
+        }
+
+        #myVideo {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            min-width: 100%;
+            min-height: 100%;
+        }
+
+        .content {
+            position: fixed;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            color: #f1f1f1;
+            width: 100%;
+            padding: 20px;
+        }
+
+        #myBtn {
+            width: 200px;
+            font-size: 18px;
+            padding: 10px;
+            border: none;
+            background: #000;
+            color: #fff;
+            cursor: pointer;
+        }
+
+            #myBtn:hover {
+                background: #ddd;
+                color: black;
+            }
+
+
+        .video-container {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+            .video-container video {
+                /* Make video to at least 100% wide and tall */
+                min-width: 100%;
+                min-height: 100%;
+                /* Setting width & height to auto prevents the browser from stretching or squishing the video */
+                width: auto;
+                height: auto;
+                /* Center the video */
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%,-50%);
+            }
+
+        @media only screen and (max-width: 1920px) {
+        }
+
+        @media only screen and (max-width: 1600px) {
+        }
+
+        @media only screen and (max-width: 1440px) {
+        }
+
+        @media only screen and (max-width: 1366px) {
+        }
+
+        @media only screen and (max-width: 1200px) {
+        }
+
+        @media only screen and (max-width: 1024px) {
+        }
+
+        @media only screen and (max-width: 992px) {
+        }
+
+        @media only screen and (max-width: 768px) {
+        }
+
+        @media only screen and (max-width: 600px) {
+        }
+
+        @media only screen and (max-width: 414px) {
+        }
+
+        @media only screen and (max-width: 320px) {
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <video autoplay loop id="myVideo">
+            <source src="../WebTemplate/Video/{{Lyrics}}" type="video/mp4">
+            Your browser does not support HTML5 video.
+        </video>
+    </div>
+
+    <div class="content">
+        <img src="../WebTemplate/images/VideoButton.png" width="45" height="38" onclick="myFunction();" />
+    </div>
+
+    <!--<div class="content">
+
+        <button id="myBtn" onclick="myFunction()">Rehoboth Media</button>
+    </div>-->
+
+    <script>
+        var video = document.getElementById("myVideo");
+        var btn = document.getElementById("myBtn");
+
+        video.play();
+        function myFunction() {
+            if (video.muted == true) { video.muted = false; }
+            else if (video.paused) {
+                video.muted = false;
+                video.play();
+                btn.innerHTML = "Subscribe";
+            } else {
+                video.muted = false;
+                video.pause();
+                btn.innerHTML = "Like & Comment";
+            }
+        }
+    </script>
+
+</body>
+</html>
+

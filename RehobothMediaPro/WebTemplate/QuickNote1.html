@@ -1,0 +1,188 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+    <title>::Welcome::</title>
+    <style>
+        body {
+            text-align: center;
+            background: #4cff00;
+            /*padding: 0;
+            margin: 0px;*/
+        }
+
+        /*.black-bg {
+            background: #000;
+            margin: 0px;
+            padding: 0px;
+            height: 100vh;
+        }*/
+
+        .sub-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            /*background-image: linear-gradient(to right, #6633ff, #660066);*/
+          
+            background-image: linear-gradient(to right, #000066,#910801);
+            border-style: solid;
+            border-color: #f9c421;
+            padding: 10px 35px;
+            border-radius: 30px;
+            display: inline-block;
+            margin-block-end: 0.22rem;
+            font-family: "Lobster", cursive;
+           
+        }
+
+        .content {
+            /*border-color: #ff9900;
+            border-style: solid;*/
+            font-size: 3.0rem;
+            background-image: linear-gradient(to right, #000066,#910801);
+            padding: 10px 10px;
+            border-radius: 30px;
+            display: inline-block;
+            font-family: "Lobster", cursive;
+            box-shadow: 15px;
+       
+            /*width: 1100px;
+            left : -900px*/
+        }
+
+        p.content {
+            margin:0px -155px;
+        }
+
+        .div-pd {
+            position: absolute;
+            right: 15%;
+            bottom: 10%;
+            left: 15%;
+            color: #fff;
+            text-align: center;
+        }
+
+        @media screen and (max-width: 1920px) {
+        }
+
+        @media screen and (max-width: 1600px) {
+        }
+
+        @media screen and (max-width: 1440px) {
+            .sub-title {
+                font-size:1.3rem
+            }
+
+            .content {
+                font-size: 5rem
+            }
+        }
+
+        @media screen and (max-width: 1366px) {
+        }
+
+        @media screen and (max-width: 1200px) {
+        }
+
+        @media screen and (max-width: 1024px) {
+        }
+
+        @media screen and (max-width: 992px) {
+            .sub-title {
+                font-size: 1.3rem
+            }
+
+            .content {
+                font-size: 5rem
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+        }
+
+        @media screen and (max-width: 600px) {
+        }
+
+        @media screen and (max-width: 414px) {
+        }
+
+        @media screen and (max-width: 320px) {
+        }
+
+        .shadow h2 {
+            position: relative;
+            color: #fff;
+            text-align: center;
+            height: 90px;
+        }
+
+        .shadow {
+            position: relative;
+            /*background-image: linear-gradient(to right, #000066,#910801);*/
+            background: linear-gradient(45deg,#f9c421,#000066);
+            font-family: "Lobster", cursive;
+        }
+
+            .shadow:before {
+                content: '';
+                text-align: center;
+                border-top-left-radius: 45px;
+                border-bottom-right-radius: 45px;
+                border-top-right-radius: 45px;
+                border-bottom-left-radius: 45px;
+                position: absolute;
+                top: -5px;
+                left: -5px;
+                border-right: -5px;
+                border-bottom: -5px;
+                /*background: linear-gradient(45deg, #fb0094,#0000ff,#00ff00,#ffff00,#ff0000,#fb0094,#0000ff,#00ff00,#ffff00,#ff0000);*/
+                background: linear-gradient(45deg, #332600,#664d00,#ffecb3,#ffe699,#4d3900,#664d00,#806000,#997300,#4d3900,#664d00);
+                background-size: 400%;
+                width: calc(100% + 4px);
+                height: calc(100% + 4px);
+                z-index: -5;
+                animation: animate 20s linear infinite;
+            }
+
+            .shadow::after {
+                content: '';
+                filter: blur(20px);
+            }
+
+        @keyframes animate {
+
+            0% {
+                background-position: 0 0;
+            }
+
+            50% {
+                background-position: 400% 0;
+            }
+
+            100% {
+                background-position: 0 0;
+            }
+
+            
+        }
+
+    </style>
+</head>
+<body>
+    <div class="black-bg">
+        <div class="div-pd">
+           <!--<h2 class="sub-title shadow">{{Header}}</h2>
+            <br />-->
+            <p class="content">
+                {{Lyrics}}
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

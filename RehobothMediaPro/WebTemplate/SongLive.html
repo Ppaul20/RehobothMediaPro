@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* This will be replaced by your custom background image! */
+            background-color: #000; 
+            background-image: url('');
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end; /* Aligns to the bottom */
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        
+        .bible-container {
+            width: 90%;
+            background-color: rgba(0, 0, 0, 0.75); /* Dark translucent glass box */
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+            text-align: center;
+            box-shadow: 0px 10px 30px rgba(0,0,0,0.8);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .primary-verse {
+            color: white;
+            font-size: 45px;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px black;
+            margin-bottom: 15px;
+        }
+
+        .secondary-verse {
+            color: #FFD700; /* Beautiful Gold/Yellow color for the second language */
+            font-size: 30px;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px black;
+            margin-bottom: 20px;
+        }
+
+        .reference {
+            color: #00B478; /* Bright teal for the Book/Chapter/Verse */
+            font-size: 28px;
+            font-weight: bold;
+            text-align: right;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bible-container">
+        <div class="primary-verse">StartIndex cannot be less than zero.
+Parameter name: startIndex</div>
+        <div class="secondary-verse"></div>
+        <div class="reference">Verse Not Available</div>
+    </div>
+</body>
+</html>

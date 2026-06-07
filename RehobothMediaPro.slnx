@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RehobothMediaPro/RehobothMediaPro.csproj" />
+  <Project Path="RehobothSetup/RehobothSetup.vdproj" Type="Installer">
+    <Build />
+  </Project>
+</Solution>

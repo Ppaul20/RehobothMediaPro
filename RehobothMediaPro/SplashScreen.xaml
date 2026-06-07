@@ -1,0 +1,100 @@
+﻿<Window x:Class="RehobothMediaPro.SplashScreen"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Loading..." Height="420" Width="720"
+        WindowStartupLocation="CenterScreen" WindowStyle="None" 
+        AllowsTransparency="True" Background="Transparent">
+
+    <!-- Main Container with subtle rounded corners -->
+    <Border CornerRadius="12" ClipToBounds="True">
+
+        <!-- Subtle shadow around the whole window -->
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="10" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+
+        <Grid>
+            <!-- 1. Deep Space Base Background -->
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#0B0C10" Offset="0.0"/>
+                    <GradientStop Color="#1A1525" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Grid.Background>
+
+            <!-- 2. The Abstract "Adobe-style" Fluid Art (Pure XAML!) -->
+            <Canvas>
+                <!-- Glowing Indigo Orb -->
+                <Ellipse Width="500" Height="500" Canvas.Left="-150" Canvas.Top="-200" Opacity="0.4">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#6C5DD3" Offset="0"/>
+                            <GradientStop Color="Transparent" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+
+                <!-- Glowing Cyan Splash -->
+                <Ellipse Width="700" Height="700" Canvas.Left="350" Canvas.Top="100" Opacity="0.15">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#00E5FF" Offset="0"/>
+                            <GradientStop Color="Transparent" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+
+                <!-- Abstract Pink Blur Mesh -->
+                <Path Fill="#E91E63" Opacity="0.15" Data="M 100,0 L 600,200 L 400,600 Z" Canvas.Left="300" Canvas.Top="-100">
+                    <Path.Effect>
+                        <BlurEffect Radius="100"/>
+                    </Path.Effect>
+                </Path>
+            </Canvas>
+
+            <!-- (OPTIONAL) If you want to use a real picture from the internet instead of the fluid art, 
+                 uncomment the line below and add your image to the project just like you did the logo! -->
+            <!-- <Image Source="pack://application:,,,/SplashArt.jpg" Stretch="UniformToFill" Opacity="0.5"/> -->
+
+            <!-- 3. The Content Overlay -->
+            <Grid Margin="40">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- TOP: Sleek Logo & Title (Left Aligned like Adobe) -->
+                <StackPanel Orientation="Horizontal" Grid.Row="0">
+                    <!-- Your App Logo -->
+                    <Image Source="pack://application:,,,/AppLogo.png" Width="70" Height="70" Stretch="Uniform">
+                        <Image.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.3" Color="Black"/>
+                        </Image.Effect>
+                    </Image>
+
+                    <StackPanel VerticalAlignment="Center" Margin="20,0,0,0">
+                        <TextBlock Text="Rehoboth Media" Foreground="White" FontSize="32" FontWeight="Bold" FontFamily="Segoe UI"/>
+                        <TextBlock Text="P R O" Foreground="#00E5FF" FontSize="11" FontWeight="Black" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- BOTTOM: Professional Initialization Text -->
+                <StackPanel Grid.Row="2" VerticalAlignment="Bottom">
+                    <TextBlock x:Name="TxtStatus" Text="Initializing Engine..." Foreground="#A0A5C0" FontSize="12" FontFamily="Segoe UI" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- 4. The Adobe-Style Edge-to-Edge Loading Bar -->
+            <ProgressBar x:Name="ProgressBar" VerticalAlignment="Bottom" Height="3" Minimum="0" Maximum="100" Value="0" BorderThickness="0" Background="Transparent">
+                <ProgressBar.Foreground>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#6C5DD3" Offset="0.0"/>
+                        <GradientStop Color="#00E5FF" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </ProgressBar.Foreground>
+            </ProgressBar>
+
+        </Grid>
+    </Border>
+</Window>

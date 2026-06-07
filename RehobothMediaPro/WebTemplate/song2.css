@@ -1,0 +1,73 @@
+﻿body {
+    margin: 0;
+    padding: 0;
+    background: #4cff00;
+    /*background: #000;*/
+}
+.shadow p {
+    position: relative;
+    /*text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 4px 4px 0 #000;*/
+    text-shadow:
+    /* Outline 1 */
+    5px 2px 2px #000000, 1px -1px 0 #000000, -1px 1px 0 #000000, 1px 1px 0 #000000, -2px 0 0 #000000, 2px 0 0 #000000, 0 2px 0 #000000, 0 -2px 0 #000000;
+    color: #fff;
+    background: linear-gradient(60deg, #3629a2, #00ceff);
+    text-align: center;
+}
+
+@media screen and (max-width: 1920px) {
+}
+
+@media screen and (max-width: 1600px) {
+}
+
+@media screen and (max-width: 1440px) {
+    
+}
+
+@media screen and (max-width: 1366px) {
+}
+
+@media screen and (max-width: 1200px) {
+}
+
+@media screen and (max-width: 1024px) {
+}
+
+@media screen and (max-width: 992px) {
+    }
+    
+
+@media screen and (max-width: 768px) {
+}
+
+@media screen and (max-width: 600px) {
+}
+
+@media screen and (max-width: 414px) {
+}
+
+@media screen and (max-width: 320px) {
+}
+
+.div-pd {
+    position: absolute;
+    right: 5%;
+    bottom: 6.5%;
+    left: 5%;
+    color: #fff;
+    text-align: center;
+}
+
+.shadow {
+    font-size: 40px;
+    position: absolute;
+    right: 5%;
+    bottom: 0%;
+    left: 5%;
+    margin: 200px auto 0;
+    text-align: center;
+    font-family: "Lobster", cursive;
+}
+
+    

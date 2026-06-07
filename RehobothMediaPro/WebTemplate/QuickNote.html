@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Song Template</title>
+    <!-- <link rel="stylesheet" type="text/css" href="song.css">-->
+
+    <style>
+        body {
+            text-align: center;
+            background: #4cff00;
+            /*padding: 0;
+            margin: 0px;*/
+        }
+
+        .shadow h3 {
+            position: relative;
+            color: #fff;
+            text-align: center;
+            height: 90px;
+        }
+
+        .shadow {
+            /*display: block;*/
+            padding: 5px;
+            bottom: 0;
+            position: relative;
+            margin: 200px auto 0;
+            font-size: 1.9rem;
+            font-weight: bold;
+            display: inline-block;
+            font-family: "Lobster", cursive;
+            border-top-left-radius: 45px;
+            border-bottom-right-radius: 45px;
+            border-top-right-radius: 45px;
+            border-bottom-left-radius: 45px;
+            text-align: center;
+            background: linear-gradient(45deg,#000037,#003300);
+            /*background: linear-gradient(45deg, #2e0673,#bd0081);*/
+            /*background-image: linear-gradient(to right, #000066,#910801);*/
+            #3F868C
+            /*background: linear-gradient(45deg, #332600,#664d00,#ffecb3,#ffe699,#4d3900,#664d00,#806000,#997300,#4d3900,#664d00);*/
+            font-family: "Lobster", cursive;
+        }
+
+            .shadow:before {
+                content: '';
+                text-align: center;
+                border-top-left-radius: 45px;
+                border-bottom-right-radius: 45px;
+                border-top-right-radius: 45px;
+                border-bottom-left-radius: 45px;
+                position: absolute;
+                top: -5px;
+                left: -5px;
+                border-right: -5px;
+                border-bottom: -5px;
+                /*background: linear-gradient(45deg, #fb0094,#0000ff,#00ff00,#ffff00,#ff0000,#fb0094,#0000ff,#00ff00,#ffff00,#ff0000);*/
+                background: linear-gradient(45deg, #332600,#664d00,#ffecb3,#ffe699,#4d3900,#664d00,#806000,#997300,#4d3900,#664d00);
+                /*background: linear-gradient(45deg, #2e0673,#bd0081,#e01028,#e01010);*/
+                background-size: 400%;
+                width: calc(100% + 4px);
+                height: calc(100% + 4px);
+                z-index: -5;
+                animation: animate 20s linear infinite;
+            }
+
+            .shadow::after {
+                content: '';
+                filter: blur(20px);
+            }
+
+        p.content {
+            margin: 0px;
+        }
+
+        .div-pd {
+            position: absolute;
+            right: 10%;
+            bottom: 6.5%;
+            left: 10%;
+            color: #fff;
+            text-align: center;
+        }
+
+        .sub-title {
+            font-size: 1.9rem;
+            text-transform: uppercase;
+            /*background-image: linear-gradient(to right, #6633ff, #660066);*/
+            background: #0c0b0b;
+            /*background-image: linear-gradient(to right, #000066,#910801);*/
+            padding: 10px;
+            font-family: "Lobster", cursive;
+        }
+
+        @keyframes animate {
+
+            0% {
+                background-position: 0 0;
+            }
+
+            50% {
+                background-position: 400% 0;
+            }
+
+            100% {
+                background-position: 0 0;
+            }
+        }
+
+        @media screen and (max-width: 1920px) {
+        }
+
+        @media screen and (max-width: 1600px) {
+        }
+
+        @media screen and (max-width: 1440px) {
+            .sub-title {
+                font-size: 1.3rem
+            }
+
+            .content {
+                font-size: 1.5rem
+            }
+        }
+
+        @media screen and (max-width: 1366px) {
+        }
+
+        @media screen and (max-width: 1200px) {
+        }
+
+        @media screen and (max-width: 1024px) {
+        }
+
+        @media screen and (max-width: 992px) {
+            .sub-title {
+                font-size: 1.9rem
+            }
+
+            .content {
+                font-size: 1.9rem
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+        }
+
+        @media screen and (max-width: 600px) {
+        }
+
+        @media screen and (max-width: 414px) {
+        }
+
+        @media screen and (max-width: 320px) {
+        }
+    </style>
+
+
+</head>
+<body>
+    <div class="div-pd">
+        <div class="shadow">
+
+            <p/>{{Lyrics}}</p>
+        </div>
+    </div>
+</body>
+</html

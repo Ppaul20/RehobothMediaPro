@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <style>
+		/* The classic Green Screen background */
+		body {
+		margin: 0;
+		padding: 0;
+		background-color: #00ff00;
+		overflow: hidden;
+		}
+		/* Smooth Fade In Effect */
+		@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+		}
+		.lyrics {
+		animation: fadeIn 0.4s ease-in-out;
+		}
+
+		/* The Translucent Strip */
+		.strip-container {
+		position: absolute;
+		bottom: 40px; /* Sits near the bottom of the screen */
+		width: 100%;
+		background-color: rgba(0, 0, 0, 0.65); /* 65% transparent black */
+		text-align: center;
+		padding: 15px 10%; /* Adjusts nicely for long lines */
+		box-sizing: border-box;
+		}
+
+		/* The Lyrics Text */
+		.lyrics {
+		font-family: 'Segoe UI', Arial, sans-serif;
+		font-weight: 700;
+		color: white;
+		font-size: {{FontSize}}; /* This links to your +/- buttons! */
+		text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
+		margin: 0;
+		line-height: 1.4;
+		}
+	</style>
+</head>
+<body>
+    <div class="strip-container">
+        <p class="lyrics">{{Lyrics}}</p>
+    </div>
+</body>
+</html>

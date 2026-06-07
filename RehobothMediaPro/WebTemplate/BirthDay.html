@@ -1,0 +1,184 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+    <title>::Welcome::</title>
+    <style>
+        body {
+            /*text-align: left;*/
+            background: #4cff00;
+            /*padding: 0;
+            margin: 0px;*/
+        }
+           tr {
+            border-radius: 30px;
+            border: 1px solid #dddddd;
+            background: linear-gradient(to bottom,#fff,#f1f1f1);
+        }
+
+
+        td {
+            /*border-left: 0.5px solid #dddddd;*/
+            font-family: "eras itc", cursive;
+            /*border-radius: 15px;*/
+            text-align: left;
+            padding: 8px;
+            color: #04014d;
+        }
+
+     
+        th {
+            /*background: linear-gradient(to right,#dc286d,#242784);*/
+            /*background: linear-gradient(to bottom,#fff,#f1f1f1);*/
+            background: linear-gradient(to right,#242784,#dc286d);
+            text-align: center;
+            border-radius: 10px;
+            /*border: 1px solid #dddddd;*/
+            padding: 8px;
+        }
+
+        /*tr:nth-child(even) {
+            background: linear-gradient(to right,#dc286d,#242784);
+        }*/
+
+        /*.black-bg {
+            background: #000;
+            margin: 0px;
+            padding: 0px;
+            height: 100vh;
+        }*/
+        .content th, .content td::before {
+            color: #dd5;
+        }
+        .sub-title {
+            text-align: center;
+            font-size: 1.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            /*background-image: linear-gradient(to right, #6633ff, #660066);*/
+            background: linear-gradient(to right,#242784,#dc286d);
+            /*background: #ffffff;*/
+            padding: 10px 35px;
+            border-radius: 30px;
+            display: inline-block;
+            font-family: "Eras ITC", cursive;
+            animation: 3s ease-out 0s 1 slideInFromLeft;
+        }
+        @keyframes slideInFromLeft {
+            0% {
+              
+                transform: translateX(-200%);
+            }
+            50% {
+                transform: translateX(-200%);
+            }
+            100% {
+              
+                transform: translateX(0);
+            }
+        }
+
+        .content {
+            /*border-color: #ff9900;
+            border-style: solid;*/
+            font-size: 1.7rem;
+            /*background: #ffffff;*/
+            background: linear-gradient(to right,#242784,#dc286d);
+            padding: 5px 5px;
+            border-radius: 15px;
+            display: inline-block;
+            font-family: "Eras ITC", cursive;
+            box-shadow: 15px;
+             animation: 3s ease-out 0s 1 slideInFromLeft;
+            /*width: 1100px;
+            left : -900px*/
+        }
+
+        p.content {
+            margin: 0px;
+        }
+
+        .div-pd {
+            position: absolute;
+            right: 10%;
+            bottom: 6.5%;
+            left: 10%;
+            color: #fff;
+            text-align: left;
+        }
+
+        @media screen and (max-width: 1920px) {
+        }
+
+        @media screen and (max-width: 1600px) {
+        }
+
+        @media screen and (max-width: 1440px) {
+            .sub-title {
+                font-size:1.3rem
+            }
+
+            .content {
+                font-size: 1.5rem
+            }
+        }
+
+        @media screen and (max-width: 1366px) {
+        }
+
+        @media screen and (max-width: 1200px) {
+        }
+
+        @media screen and (max-width: 1024px) {
+        }
+
+        @media screen and (max-width: 992px) {
+            .sub-title {
+                font-size: 1.9rem
+            }
+
+            .content {
+                font-size: 1.9rem
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+        }
+
+        @media screen and (max-width: 600px) {
+        }
+
+        @media screen and (max-width: 414px) {
+        }
+
+        @media screen and (max-width: 320px) {
+        }
+    </style>
+</head>
+<body>
+    <div class="black-bg">
+        <div class="div-pd">
+            <h2 class="sub-title">{{Header}}</h2>
+            <br />
+            <!--<p class="content">-->
+                <!--{{Lyrics}}-->
+
+                <table class="content">
+                    <tbody>
+                        <tr>
+                            <th>Name</th>
+                            <th>Date</th>
+                        </tr>
+                        {{Lyrics}}                       
+                    </tbody>
+                </table>
+            <!--</p>-->
+        </div>
+    </div>
+
+</body>
+</html>
