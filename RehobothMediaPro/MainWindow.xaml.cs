@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
@@ -9,6 +10,8 @@ using System.Windows.Media;
 using ExcelDataReader;
 using RehobothMediaPro.Helpers;
 using RehobothMediaPro.Models;
+using Brush = System.Windows.Media.Brush;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace RehobothMediaPro
 {
@@ -24,27 +27,46 @@ namespace RehobothMediaPro
         public FileHelper fileHelper = new FileHelper();
         public List<HtmlModel> FinalHtmlModels;
         public string templateName = "song";
+        public string autoFilledTitle = "";
+
+        private List<string> songDatabaseMemory = new List<string>();
+        private bool isSongLoading = false; // Prevents recursive loops
         public MainWindow()
         {
             InitializeComponent();
             InitializationOfbuttons();
-            SongDropdownList.ItemsSource = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
-
+            // FIX: Load the raw list once, and enable the internal filtering engine!
+            var songData = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
+            songDatabaseMemory = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
             // FIX: Load the correct memory file when the app starts! (Defaults to Green Screen)
             if (System.IO.File.Exists(memGreen)) FontSizeBox.Text = System.IO.File.ReadAllText(memGreen);
             else FontSizeBox.Text = "45"; // Default if no memory file exists
             LoadBibleDropdowns();
+            LoadBibleBackgrounds(); // FIX: Now the gallery instantly loads when the app opens!
             LoadLowerThirds(); // Populates Pastor Names and MP4 Lists!
             InitMiniMonitor();
 
-            // Load Gradient Memory
-            string gradFile = System.IO.Path.Combine(FileHelper.GetAppFolder(), "gradient_memory.txt");
+            // Load Gradient Memory into the Buttons!
+            string gradFile = System.IO.Path.Combine(RehobothMediaPro.Helpers.FileHelper.GetAppFolder(), "gradient_memory.txt");
             if (System.IO.File.Exists(gradFile))
             {
                 string[] parts = System.IO.File.ReadAllText(gradFile).Split('|');
-                if (parts.Length == 2) { TxtGrad1.Text = parts[0]; TxtGrad2.Text = parts[1]; }
+                if (parts.Length == 2)
+                {
+                    // FIX: Explicitly forces System.Windows.Media.Brush to avoid compiler confusion!
+                    BtnGrad1.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom(parts[0]);
+                    BtnGrad1.Tag = parts[0];
+
+                    BtnGrad2.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom(parts[1]);
+                    BtnGrad2.Tag = parts[1];
+                }
             }
+            string bgFile = System.IO.Path.Combine(FileHelper.GetAppFolder(), "bible_bg_memory.txt");
+            if (System.IO.File.Exists(bgFile)) customBgPath = System.IO.File.ReadAllText(bgFile);
+
         }
+
+        private DateTime lastShiftPress = DateTime.MinValue;
 
         // Generate the 42 Buttons with perfect rounded corners!
         private void InitializationOfbuttons()
@@ -56,7 +78,7 @@ namespace RehobothMediaPro
             {
                 Button btn = new Button();
                 btn.Margin = new Thickness(6); // Perfect spacing
-                btn.Background = (Brush)new BrushConverter().ConvertFrom("#2D3047");
+                btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#2D3047");
                 btn.Foreground = Brushes.White;
                 btn.FontSize = 13;
                 btn.FontWeight = FontWeights.Bold;
@@ -121,8 +143,8 @@ namespace RehobothMediaPro
                 if (buttonIndex >= SongLyricsbuttons.Count) break;
 
                 Brush baseColor = chkPresentation.IsChecked == true ?
-                    (Brush)new BrushConverter().ConvertFrom("#6C5DD3") :
-                    (isBlue ? (Brush)new BrushConverter().ConvertFrom("#0085FF") : (Brush)new BrushConverter().ConvertFrom("#2D3047"));
+                    (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#6C5DD3") :
+                    (isBlue ? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#0085FF") : (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#2D3047"));
 
                 if (chkPresentation.IsChecked == true)
                 {
@@ -167,6 +189,31 @@ namespace RehobothMediaPro
         // THE 42 RULE: CORE ENGINE LOGIC
         // ----------------------------------------------------------------
 
+        // --- NEW: SUNDAY SETLIST QUEUE ---
+        // --- NEW: SUNDAY SETLIST QUEUE ---
+        private void BtnAddToSetlist_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(SongSearchBox.Text)) return;
+
+            string songName = SongSearchBox.Text.Trim();
+
+            // Prevents adding the same song twice!
+            if (!SetlistBox.Items.Contains(songName))
+            {
+                SetlistBox.Items.Add(songName);
+                LblSetlistEmpty.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void SetlistBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (SetlistBox.SelectedItem != null)
+            {
+                // Send the queued song directly to the Master Loader!
+                LoadSongIntoEditor(SetlistBox.SelectedItem.ToString());
+                SetlistBox.SelectedIndex = -1; // Clear selection
+            }
+        }
         private void BtnOpenLive_Click(object sender, RoutedEventArgs e)
         {
             // Instantly creates the Theme/Logo background HTML!
@@ -231,27 +278,78 @@ namespace RehobothMediaPro
             chromeHelper.CloseChrome();
         }
         // FIX: Smart Arrow Keys (WITH 42 RULE VERTICAL JUMPING RESTORED!)
+        // FIX: Flawless Double-Shift, ESC wipe, and protected Dropdown Navigation!
         protected override void OnPreviewKeyDown(KeyEventArgs e)
         {
-            if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox)
+            // 1. ESC to wipe the screen!
+            if (e.Key == Key.Escape)
             {
-                base.OnPreviewKeyDown(e);
-                return;
+                if (SongDashboard.Visibility == Visibility.Visible)
+                {
+                    if (chkPresentation.IsChecked == true) BtnThemeLogo_Click(null, null);
+                    else BtnGreenScreen_Click(null, null);
+                    e.Handled = true; return;
+                }
             }
 
-            // BIBLE NAVIGATION (Only works if the Bible Dashboard is visible)
+            // 2. True Double-Tap Shift to Search
+            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            {
+                if (!e.IsRepeat)
+                {
+                    if ((DateTime.Now - lastShiftPress).TotalMilliseconds < 400)
+                    {
+                        if (SongDashboard.Visibility == Visibility.Visible)
+                        {
+                            SongSearchBox.Focus();
+                            SongSearchBox.SelectAll();
+                        }
+                        else if (BibleDashboard.Visibility == Visibility.Visible)
+                        {
+                            BibleSearchBox.Focus();
+                            BibleSearchBox.SelectAll();
+                        }
+                        e.Handled = true;
+                    }
+                    lastShiftPress = DateTime.Now;
+                }
+            }
+
+            // 3. FIX: Protect the Custom Floating Suggestion List!
+            if (SongSuggestionPopup.IsOpen)
+            {
+                // If you are typing and hit Down, force focus directly into the list items!
+                if (e.Key == Key.Down && Keyboard.FocusedElement == SongSearchBox)
+                {
+                    SongSuggestionList.Focus();
+                    if (SongSuggestionList.Items.Count > 0)
+                    {
+                        SongSuggestionList.SelectedIndex = 0;
+                        var item = (ListBoxItem)SongSuggestionList.ItemContainerGenerator.ContainerFromIndex(0);
+                        item?.Focus();
+                    }
+                    e.Handled = true;
+                    return;
+                }
+
+                // If you are navigating the list, let native WPF handle Up/Down/Enter without hijacking it!
+                if (e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.Enter)
+                {
+                    return;
+                }
+            }
+
+            // Don't steal arrows if typing in ANY text box
+            if (Keyboard.FocusedElement is TextBox)
+            {
+                base.OnPreviewKeyDown(e); return;
+            }
+
+            // BIBLE NAVIGATION
             if (BibleDashboard.Visibility == Visibility.Visible)
             {
-                if (e.Key == Key.Right || e.Key == Key.Down)
-                {
-                    BtnNextVerse_Click(null, null);
-                    e.Handled = true;
-                }
-                else if (e.Key == Key.Left || e.Key == Key.Up)
-                {
-                    BtnPrevVerse_Click(null, null);
-                    e.Handled = true;
-                }
+                if (e.Key == Key.Right || e.Key == Key.Down) { BtnNextVerse_Click(null, null); e.Handled = true; }
+                else if (e.Key == Key.Left || e.Key == Key.Up) { BtnPrevVerse_Click(null, null); e.Handled = true; }
                 return;
             }
 
@@ -259,29 +357,37 @@ namespace RehobothMediaPro
             if (SongDashboard.Visibility == Visibility.Visible)
             {
                 if (FinalHtmlModels == null || FinalHtmlModels.Count == 0) return;
+                bool isCtrltHeld = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
 
-                int jumpAmount = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) ? 4 : 1;
-                if (e.Key == Key.Right)
-                {
-                    if (songCounter + jumpAmount < FinalHtmlModels.Count) { songCounter += jumpAmount; ChoosLyrics(); e.Handled = true; }
-                    else if (songCounter < FinalHtmlModels.Count - 1) { songCounter++; ChoosLyrics(); e.Handled = true; }
-                }
-                else if (e.Key == Key.Left)
-                {
-                    if (songCounter - jumpAmount >= 0) { songCounter -= jumpAmount; ChoosLyrics(); e.Handled = true; }
-                    else if (songCounter > 0) { songCounter--; ChoosLyrics(); e.Handled = true; }
-                }
-                else if (e.Key == Key.Down)
-                { // FIX: Restored vertical grid jumping!
-                    if (songCounter + 5 < FinalHtmlModels.Count) { songCounter += 5; ChoosLyrics(); e.Handled = true; }
-                }
-                else if (e.Key == Key.Up)
-                { // FIX: Restored vertical grid jumping!
-                    if (songCounter - 5 >= 0) { songCounter -= 5; ChoosLyrics(); e.Handled = true; }
-                }
+                if (e.Key == Key.Right) { if (songCounter < FinalHtmlModels.Count - 1) { songCounter++; if (!isCtrltHeld) ChoosLyrics(); else UpdateGridHighlightOnly(); e.Handled = true; } }
+                else if (e.Key == Key.Left) { if (songCounter > 0) { songCounter--; if (!isCtrltHeld) ChoosLyrics(); else UpdateGridHighlightOnly(); e.Handled = true; } }
+                else if (e.Key == Key.Down) { if (songCounter + 5 < FinalHtmlModels.Count) { songCounter += 5; if (!isCtrltHeld) ChoosLyrics(); else UpdateGridHighlightOnly(); e.Handled = true; } }
+                else if (e.Key == Key.Up) { if (songCounter - 5 >= 0) { songCounter -= 5; if (!isCtrltHeld) ChoosLyrics(); else UpdateGridHighlightOnly(); e.Handled = true; } }
             }
-
             base.OnPreviewKeyDown(e);
+        }
+
+        // Detects when you let go of the Shift key!
+        protected override void OnPreviewKeyUp(KeyEventArgs e)
+        {
+            if (SongDashboard.Visibility == Visibility.Visible && (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl))
+            {
+                // Push to live display exactly like Alt+Tab!
+                ChoosLyrics();
+                e.Handled = true;
+            }
+            base.OnPreviewKeyUp(e);
+        }
+
+        // Moves the Green Box visually WITHOUT sending it to the Live Display!
+        private void UpdateGridHighlightOnly()
+        {
+            for (int i = 0; i < SongLyricsbuttons.Count; i++)
+            {
+                if (SongLyricsbuttons[i].Visibility != Visibility.Visible) continue;
+                if (i == songCounter) SongLyricsbuttons[i].Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF9F43"); // Orange while jumping!
+                else SongLyricsbuttons[i].Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom(SongLyricsbuttons[i].Uid);
+            }
         }
 
         // FIX: Font Size Buttons wired up!
@@ -315,14 +421,33 @@ namespace RehobothMediaPro
         {
             if (FinalHtmlModels == null || FinalHtmlModels.Count <= songCounter) return;
 
-            // 1. Sends the single line to the Green Screen!
-            fileHelper.SaveasHtmlForSong(templateName, FinalHtmlModels[songCounter]);
+            string g1 = "#0f2027";
+            string g2 = "#2c5364";
 
-            // 2. SMART SYNC: Finds the full paragraph and sends it to the Presentation Screen!
+            string gradFile = System.IO.Path.Combine(RehobothMediaPro.Helpers.FileHelper.GetAppFolder(), "gradient_memory.txt");
+            if (System.IO.File.Exists(gradFile))
+            {
+                string[] parts = System.IO.File.ReadAllText(gradFile).Split('|');
+                if (parts.Length == 2) { g1 = parts[0]; g2 = parts[1]; }
+            }
+
+            // SMART ROUTING: If Presentation Mode is checked, we force the Main Screen to show the Gradient Template!
+            if (chkPresentation.IsChecked == true)
+            {
+                // Forces the main screen to act like a Presentation screen!
+                fileHelper.SaveasHtmlForPresentation(FinalHtmlModels[songCounter], g1, g2, "SongLive");
+            }
+            else
+            {
+                // Normal Green Screen
+                fileHelper.SaveasHtmlForSong(templateName, FinalHtmlModels[songCounter]);
+            }
+
+            // Sync the full paragraph to the secondary Presentation Monitor
             string cleanLine = FinalHtmlModels[songCounter].Lyrics.Replace("<br/>", "").Replace("</br>", "").Trim();
             string[] stanzas = LyricsInputBox.Text.Replace("\r\n", "\n").Replace("\r", "\n").Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
 
-            string fullParagraph = cleanLine; // Fallback
+            string fullParagraph = cleanLine;
             foreach (var stanza in stanzas)
             {
                 if (stanza.Replace("\n", "").Replace(" ", "").Contains(cleanLine.Replace(" ", "")))
@@ -332,50 +457,27 @@ namespace RehobothMediaPro
                 }
             }
 
-            fileHelper.SaveasHtmlForPresentation(new HtmlModel() { Lyrics = fullParagraph }, TxtGrad1.Text, TxtGrad2.Text); chromeHelper.RefreshChrome();
+            // Send full paragraph to the 2nd monitor
+            fileHelper.SaveasHtmlForPresentation(new HtmlModel() { Lyrics = fullParagraph.TrimEnd('<', 'b', 'r', '/', '>') }, g1, g2, "SongPresentation");
 
-            // Updates the Green Box highlight!
+            chromeHelper.RefreshChrome();
+
+            // Update the Green Box Highlight
             for (int i = 0; i < SongLyricsbuttons.Count; i++)
             {
                 if (SongLyricsbuttons[i].Visibility != Visibility.Visible) continue;
-                if (i == songCounter) SongLyricsbuttons[i].Background = (Brush)new BrushConverter().ConvertFrom("#00B478");
-                else SongLyricsbuttons[i].Background = (Brush)new BrushConverter().ConvertFrom(SongLyricsbuttons[i].Uid);
+                if (i == songCounter) SongLyricsbuttons[i].Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
+                else SongLyricsbuttons[i].Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom(SongLyricsbuttons[i].Uid);
             }
         }
 
-        private void SongDropdownList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (SongDropdownList.SelectedItem == null && !string.IsNullOrWhiteSpace(SongDropdownList.Text))
-            {
-                // FIX: "Contains" Filtering! It searches the middle of the song titles!
-                string query = SongDropdownList.Text.ToLower();
-                var list = fileHelper.FiletoList("SongDataBaseList");
-                var matches = list.Where(x => x.ToLower().Contains(query)).OrderBy(x => x).ToList();
 
-                SongDropdownList.ItemsSource = matches;
-                SongDropdownList.IsDropDownOpen = true; // Keeps the dropdown open while you type!
-                return;
-            }
-
-            if (SongDropdownList.SelectedItem == null) return;
-
-            string safeFileName = SongDropdownList.SelectedItem.ToString();
-            string baseDir = FileHelper.GetAppFolder();
-            string fullPath = System.IO.Path.Combine(baseDir, $@"WebTemplate\SongDataBase\{safeFileName}.txt");
-
-            if (System.IO.File.Exists(fullPath))
-            {
-                string rawText = System.IO.File.ReadAllText(fullPath);
-                LyricsInputBox.Text = rawText.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
-            }
-            else LyricsInputBox.Text = string.Empty;
-        }
 
         private void BtnDelete_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(SongDropdownList.Text)) return;
+            if (string.IsNullOrWhiteSpace(SongSearchBox.Text)) return;
 
-            string safeFileName = SongDropdownList.Text;
+            string safeFileName = SongSearchBox.Text.Trim();
             MessageBoxResult dialogResult = MessageBox.Show($"Are you sure you want to delete '{safeFileName}'?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (dialogResult == MessageBoxResult.Yes)
@@ -393,8 +495,10 @@ namespace RehobothMediaPro
                     System.IO.File.WriteAllText(listPath, string.Join(";", songs));
                 }
 
-                SongDropdownList.ItemsSource = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
+                // Update memory instantly
+                songDatabaseMemory = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
                 LyricsInputBox.Text = "";
+                SongSearchBox.Text = "";
                 MessageBox.Show("Song deleted successfully!", "Deleted", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
@@ -404,12 +508,14 @@ namespace RehobothMediaPro
             var song = LyricsInputBox.Text;
             if (!string.IsNullOrEmpty(song))
             {
-                string currentSelection = SongDropdownList.Text.Trim();
+                string currentSelection = SongSearchBox.Text.Trim();
 
-                // USE THE NEW MODERN SAVE DIALOG
-                string songName = ShowModernSaveDialog(currentSelection);
+                string defaultTitle = "";
+                if (!string.IsNullOrEmpty(autoFilledTitle)) defaultTitle = autoFilledTitle;
+                else if (!string.IsNullOrEmpty(currentSelection)) defaultTitle = currentSelection;
 
-                if (songName == null) return; // They canceled
+                string songName = ShowModernSaveDialog(defaultTitle);
+                if (songName == null) return;
 
                 if (!string.IsNullOrWhiteSpace(songName))
                 {
@@ -428,20 +534,20 @@ namespace RehobothMediaPro
                         nameList.Add(safeFileName);
                         fileHelper.CreateFile(@"DropDownList\SongDataBaseList", string.Join(";", nameList), "txt");
 
-                        // FIX: Temporarily unplug the listener so it doesn't wipe the text box!
-                        SongDropdownList.SelectionChanged -= SongDropdownList_SelectionChanged;
-                        SongDropdownList.ItemsSource = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
-                        SongDropdownList.SelectionChanged += SongDropdownList_SelectionChanged;
+                        // Update memory instantly
+                        songDatabaseMemory = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
                     }
 
-                    // Unplug here too just in case!
-                    SongDropdownList.SelectionChanged -= SongDropdownList_SelectionChanged;
-                    SongDropdownList.Text = safeFileName;
-                    SongDropdownList.SelectionChanged += SongDropdownList_SelectionChanged;
-
+                    SongSearchBox.Text = safeFileName;
                     fileHelper.CreateFileSong(safeFileName, song, "txt");
+
+                    autoFilledTitle = "";
                     MessageBox.Show("Song saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
+            }
+            else
+            {
+                MessageBox.Show("Song Cannot be empty", "Invalid Song", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         private void BtnUndoEventSave_Click(object sender, RoutedEventArgs e)
@@ -481,15 +587,15 @@ namespace RehobothMediaPro
                 Height = 200,
                 Title = "Save Song",
                 WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Background = (Brush)new BrushConverter().ConvertFrom("#0F111A"),
+                Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#0F111A"),
                 Foreground = Brushes.White,
                 WindowStyle = WindowStyle.ToolWindow
             };
 
             StackPanel panel = new StackPanel() { Margin = new Thickness(20) };
             TextBlock label = new TextBlock() { Text = "Enter Song Name (Keep same to Overwrite):", Margin = new Thickness(0, 0, 0, 10), Foreground = Brushes.White };
-            TextBox input = new TextBox() { Text = defaultText, FontSize = 14, Padding = new Thickness(5), Background = (Brush)new BrushConverter().ConvertFrom("#1C1E30"), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
-            Button btn = new Button() { Content = "Save", Width = 100, Height = 35, Margin = new Thickness(0, 20, 0, 0), Background = (Brush)new BrushConverter().ConvertFrom("#00B478"), Foreground = Brushes.White, Cursor = Cursors.Hand, BorderThickness = new Thickness(0) };
+            TextBox input = new TextBox() { Text = defaultText, FontSize = 14, Padding = new Thickness(5), Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#1C1E30"), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+            Button btn = new Button() { Content = "Save", Width = 100, Height = 35, Margin = new Thickness(0, 20, 0, 0), Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478"), Foreground = Brushes.White, Cursor = Cursors.Hand, BorderThickness = new Thickness(0) };
 
             btn.Click += (s, e) => prompt.DialogResult = true;
             panel.Children.Add(label); panel.Children.Add(input); panel.Children.Add(btn);
@@ -500,13 +606,29 @@ namespace RehobothMediaPro
         private void BtnFetchWeb_Click(object sender, RoutedEventArgs e)
         {
             SongFetcherForm fetcher = new SongFetcherForm();
-            if (fetcher.ShowDialog() == System.Windows.Forms.DialogResult.OK) // Note: Using WinForms dialog result here
+            if (fetcher.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 if (!string.IsNullOrEmpty(fetcher.FetchedLyrics))
                 {
                     LyricsInputBox.Text = fetcher.FetchedLyrics.Replace("\n", "\r\n");
-                    SongDropdownList.Text = fetcher.FetchedTitle;
+                    autoFilledTitle = fetcher.FetchedTitle;
                     MessageBox.Show("Lyrics imported! You can now edit them, add paragraph spacing, and click Save.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else if (!string.IsNullOrEmpty(fetcher.FetchedTitle))
+                {
+                    string searchTitle = fetcher.FetchedTitle.ToLower();
+
+                    // Look for a partial match in our memory list!
+                    string match = songDatabaseMemory.FirstOrDefault(x => x.ToLower().Contains(searchTitle) || searchTitle.Contains(x.ToLower()));
+
+                    if (match != null)
+                    {
+                        LoadSongIntoEditor(match); // Instantly loads it!
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Could not find a song named '{fetcher.FetchedTitle}' in your local database.\n\nYou may need to Auto-Import the lyrics first!", "Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 }
             }
         }
@@ -657,29 +779,16 @@ namespace RehobothMediaPro
             bibleFontSizeOffset = 0.0;
             if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) DisplayVerse();
         }
-        private void BibleStyle_Changed(object sender, SelectionChangedEventArgs e) { if (BibleDashboard != null && BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) DisplayVerse(); }
-        // ----------------------------------------------
+        // FIX: Now accepts both ComboBox changes AND CheckBox clicks!
+        private void BibleStyle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (BibleDashboard != null && BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) DisplayVerse();
+        }        // ----------------------------------------------
 
         private readonly string[] BibleBooksList = { "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel", "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther", "Job", "Psalms", "Proverbs", "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations", "Ezekiel", "Daniel", "Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi", "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon", "Hebrews", "James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation" };
 
         // FIX: Flawless translated book names for the Dual-Language Reference Banner!
         private readonly string[] TamilBooksList = { "ஆதியாகமம்", "யாத்திராகமம்", "லேவியராகமம்", "எண்ணாகமம்", "உபாகமம்", "யோசுவா", "நியாயாதிபதிகள்", "ரூத்", "1 சாமுவேல்", "2 சாமுவேல்", "1 இராஜாக்கள்", "2 இராஜாக்கள்", "1 நாளாகமம்", "2 நாளாகமம்", "எஸ்றா", "நெகேமியா", "எஸ்தர்", "யோபு", "சங்கீதம்", "நீதிமொழிகள்", "பிரசங்கி", "உன்னதப்பாட்டு", "ஏசாயா", "எரேமியா", "புலம்பல்", "எசேக்கியேல்", "தானியேல்", "ஓசியா", "யோவேல்", "ஆமோஸ்", "ஒபதியா", "யோனா", "மீகா", "நாகூம்", "ஆபகூக்", "செப்பனியா", "ஆகாய்", "சகரியா", "மல்கியா", "மத்தேயு", "மாற்கு", "லூக்கா", "யோவான்", "அப்போஸ்தலர்", "ரோமர்", "1 கொரிந்தியர்", "2 கொரிந்தியர்", "கலாத்தியர்", "எபேசியர்", "பிலிப்பியர்", "கொலோசெயர்", "1 தெசலோனிக்கேயர்", "2 தெசலோனிக்கேயர்", "1 தீமோத்தேயு", "2 தீமோத்தேயு", "தீத்து", "பிலேமோன்", "எபிரெயர்", "யாக்கோபு", "1 பேதுரு", "2 பேதுரு", "1 யோவான்", "2 யோவான்", "3 யோவான்", "யூதா", "வெளிப்படுத்தின விசேஷம்" };
-        private void BtnBrowseBg_Click(object sender, RoutedEventArgs e)
-        {
-            Microsoft.Win32.OpenFileDialog ofd = new Microsoft.Win32.OpenFileDialog() { Filter = "Image Files|*.jpg;*.jpeg;*.png" };
-            if (ofd.ShowDialog() == true)
-            {
-                customBgPath = ofd.FileName;
-                LblBgStatus.Text = "Image: " + System.IO.Path.GetFileName(customBgPath);
-            }
-        }
-
-        private void BtnRemoveBg_Click(object sender, RoutedEventArgs e)
-        {
-            customBgPath = "";
-            LblBgStatus.Text = "Solid Black";
-            if (!string.IsNullOrEmpty(currentBook)) DisplayVerse();
-        }
 
         private void BibleSearchBox_KeyDown(object sender, KeyEventArgs e)
         {
@@ -698,16 +807,36 @@ namespace RehobothMediaPro
         private void BtnNextVerse_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(currentBook)) return;
-            currentVerse++;
-            BibleSearchBox.Text = $"{currentBook} {currentChapter} {currentVerse}";
-            DisplayVerse();
+
+            // Check if there's actually a verse to jump to!
+            if (currentVerse < ChapterVerseList.Items.Count)
+            {
+                currentVerse++;
+                BibleSearchBox.Text = $"{currentBook} {currentChapter} {currentVerse}";
+
+                // FIX: Force the highlight to jump!
+                isUpdatingList = true;
+                ChapterVerseList.SelectedIndex = currentVerse - 1;
+                ChapterVerseList.ScrollIntoView(ChapterVerseList.SelectedItem);
+                isUpdatingList = false;
+
+                DisplayVerse();
+            }
         }
 
         private void BtnPrevVerse_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(currentBook) || currentVerse <= 1) return;
+
             currentVerse--;
             BibleSearchBox.Text = $"{currentBook} {currentChapter} {currentVerse}";
+
+            // FIX: Force the highlight to jump!
+            isUpdatingList = true;
+            ChapterVerseList.SelectedIndex = currentVerse - 1;
+            ChapterVerseList.ScrollIntoView(ChapterVerseList.SelectedItem);
+            isUpdatingList = false;
+
             DisplayVerse();
         }
 
@@ -779,13 +908,15 @@ namespace RehobothMediaPro
             var dict = new Dictionary<int, string>();
             try
             {
-                string searchBook = book.StartsWith("1 ") ? book.Replace("1 ", "I") : (book.StartsWith("2 ") ? book.Replace("2 ", "II") : (book.StartsWith("3 ") ? book.Replace("3 ", "III") : book));
-                int bookIndex = Array.IndexOf(BibleBooksList, searchBook) + 1;
+                // FIX: No more Roman Numeral translation! Directly matches the exact book name!
+                int bookIndex = Array.IndexOf(BibleBooksList, book) + 1;
                 string folderNum = bookIndex < 10 ? $"0{bookIndex}" : bookIndex.ToString();
 
                 string filePath = System.IO.Path.Combine(FileHelper.GetAppFolder(), "BibleDataBase", folderName, folderNum, $"{chapter}.htm");
 
                 if (!System.IO.File.Exists(filePath)) return dict;
+
+                // ... (leave the HtmlAgilityPack stuff below this exactly the same) ...
 
                 HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
                 doc.Load(filePath, System.Text.Encoding.UTF8);
@@ -862,48 +993,84 @@ namespace RehobothMediaPro
                 verseTexts.Add(FetchVerseText(currentBook, currentChapter, currentVerse, lang));
             }
 
-            // FIX: Generate the Dual-Language Banner Text!
-            string finalHeader = $"{currentBook} {currentChapter}:{currentVerse}";
-
-            // If Tamil is one of the active languages, append the Tamil translation!
-            if (activeLangs.Contains("tamilBible") && activeLangs.Count >= 2)
+            // FIX: Perfect Primary [Secondary] Formatting!
+            string finalHeader = "";
+            if (activeLangs.Count > 0)
             {
-                int bookIndex = Array.IndexOf(BibleBooksList, currentBook);
-                if (bookIndex >= 0 && bookIndex < TamilBooksList.Length)
+                string priName = currentBook;
+                if (activeLangs[0] == "tamilBible")
                 {
-                    string tamilName = TamilBooksList[bookIndex];
-                    // Always put the non-Tamil language first, followed by Tamil
-                    finalHeader = $"{currentBook} {currentChapter}:{currentVerse} | {tamilName} {currentChapter}:{currentVerse}";
+                    int idx = Array.IndexOf(BibleBooksList, currentBook);
+                    if (idx >= 0) priName = TamilBooksList[idx];
                 }
-            }
+                finalHeader = $"{priName} {currentChapter}:{currentVerse}";
 
-            if (currentVerse - 1 >= 0 && currentVerse - 1 < ChapterVerseList.Items.Count)
-            {
-                isUpdatingList = true; ChapterVerseList.SelectedIndex = currentVerse - 1;
-                ChapterVerseList.ScrollIntoView(ChapterVerseList.SelectedItem); isUpdatingList = false;
+                // If there's a second language, wrap it in brackets!
+                if (activeLangs.Count > 1)
+                {
+                    string secName = currentBook;
+                    if (activeLangs[1] == "tamilBible")
+                    {
+                        int idx = Array.IndexOf(BibleBooksList, currentBook);
+                        if (idx >= 0) secName = TamilBooksList[idx];
+                    }
+                    finalHeader += $" [{secName} {currentChapter}:{currentVerse}]";
+                }
+
+                if (currentVerse - 1 >= 0 && currentVerse - 1 < ChapterVerseList.Items.Count)
+                {
+                    Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        isUpdatingList = true;
+                        ChapterVerseList.SelectedIndex = currentVerse - 1;
+                        ChapterVerseList.ScrollIntoView(ChapterVerseList.SelectedItem);
+                        isUpdatingList = false;
+                    }, System.Windows.Threading.DispatcherPriority.Loaded);
+                }
             }
 
             string vFont = CbVerseFont.SelectedItem?.ToString() ?? "Segoe UI";
             string vColor = CbVerseColor.SelectedItem?.ToString() ?? "White";
             string rFont = CbRefFont.SelectedItem?.ToString() ?? "Segoe UI";
 
-            fileHelper.SaveasHtmlForVerseViewBible(finalHeader, verseTexts, customBgPath, bibleFontSizeOffset, vFont, vColor, rFont);
-            chromeHelper.RefreshChrome();
-            if (!HistoryList.Items.Contains($"{currentBook} {currentChapter}:{currentVerse}")) HistoryList.Items.Insert(0, $"{currentBook} {currentChapter}:{currentVerse}");
+            // FIX: TRUE CROSSFADE TRANSITION!
+            // First, tell the live screen to smoothly fade to black/transparent...
+            chromeHelper.ExecuteJavascriptOnLive("document.body.style.transition = 'opacity 0.3s ease-in-out'; document.body.style.opacity = '0';");
+
+            // Wait 300ms for the fade out to finish, then swap the HTML and reload!
+            System.Threading.Tasks.Task.Delay(300).ContinueWith(_ =>
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    fileHelper.SaveasHtmlForVerseViewBible(finalHeader, verseTexts, customBgPath, bibleFontSizeOffset, vFont, vColor, rFont, chkPriBold.IsChecked == true, chkSecBold.IsChecked == true);
+                    chromeHelper.RefreshChrome(); // The new HTML natively fades IN!
+                });
+            });
+
+            // FIX: If it's already in the list, remove it and put it at the very top!
+            string historyString = $"{currentBook} {currentChapter}:{currentVerse}";
+            if (HistoryList.Items.Contains(historyString))
+            {
+                HistoryList.Items.Remove(historyString);
+            }
+
+            HistoryList.Items.Insert(0, historyString);
+            if (HistoryList.Items.Count > 20) HistoryList.Items.RemoveAt(20);
         }
 
         // Updated to extract the <title> tag for translated book names!
-        private string FetchVerseText(string book, string chapter, int verse, string folderName, out string localizedTitle)
+        private string FetchVerseText(string book, string chapter, int verse, string folderName)
         {
-            localizedTitle = book;
             try
             {
-                string searchBook = book.StartsWith("1 ") ? book.Replace("1 ", "I") : (book.StartsWith("2 ") ? book.Replace("2 ", "II") : (book.StartsWith("3 ") ? book.Replace("3 ", "III") : book));
-                int bookIndex = Array.IndexOf(BibleBooksList, searchBook) + 1;
+                // FIX: Removed the Roman Numeral translation here too!
+                int bookIndex = Array.IndexOf(BibleBooksList, book) + 1;
                 string folderNum = bookIndex < 10 ? $"0{bookIndex}" : bookIndex.ToString();
 
                 string filePath = System.IO.Path.Combine(FileHelper.GetAppFolder(), "BibleDataBase", folderName, folderNum, $"{chapter}.htm");
                 if (!System.IO.File.Exists(filePath)) return "[File Not Found]";
+
+                // ... (leave the HtmlAgilityPack stuff below this exactly the same) ...
 
                 HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
                 doc.Load(filePath, System.Text.Encoding.UTF8);
@@ -938,36 +1105,89 @@ namespace RehobothMediaPro
                 if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) { PopulateChapterPreview(); DisplayVerse(); }
             }
         }
-        private string FetchVerseText(string book, string chapter, int verse, string folderName)
+        // --- BIBLE BACKGROUND GALLERY ENGINE ---
+        private System.Collections.ObjectModel.ObservableCollection<GalleryItem> galleryItems = new System.Collections.ObjectModel.ObservableCollection<GalleryItem>();
+
+        private void LoadBibleBackgrounds()
         {
-            try
+            string galleryFolder = System.IO.Path.Combine(FileHelper.GetAppFolder(), @"WebTemplate\BibleBackgrounds");
+            if (!System.IO.Directory.Exists(galleryFolder)) System.IO.Directory.CreateDirectory(galleryFolder);
+
+            var images = System.IO.Directory.GetFiles(galleryFolder).Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)).ToList();
+
+            string bgFile = System.IO.Path.Combine(FileHelper.GetAppFolder(), "bible_bg_memory.txt");
+            if (System.IO.File.Exists(bgFile)) customBgPath = System.IO.File.ReadAllText(bgFile);
+
+            galleryItems.Clear();
+            foreach (var imgPath in images)
             {
-                string searchBook = book.StartsWith("1 ") ? book.Replace("1 ", "I") : (book.StartsWith("2 ") ? book.Replace("2 ", "II") : (book.StartsWith("3 ") ? book.Replace("3 ", "III") : book));
-                int bookIndex = Array.IndexOf(BibleBooksList, searchBook) + 1;
-                string folderNum = bookIndex < 10 ? $"0{bookIndex}" : bookIndex.ToString();
+                // FIX: Load the image entirely into RAM and release the file lock instantly!
+                var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; // This is the magic lock-breaker!
+                bitmap.UriSource = new Uri(imgPath);
+                bitmap.EndInit();
+                bitmap.Freeze(); // Optimizes performance
 
-                string filePath = System.IO.Path.Combine(FileHelper.GetAppFolder(), "BibleDataBase", folderName, folderNum, $"{chapter}.htm");
-                if (!System.IO.File.Exists(filePath)) return "[File Not Found]";
-
-                HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                doc.Load(filePath, System.Text.Encoding.UTF8);
-
-                HtmlAgilityPack.HtmlNode startNode = doc.DocumentNode.SelectSingleNode($"//*[@id='{verse}']");
-                if (startNode != null)
+                galleryItems.Add(new GalleryItem
                 {
-                    string text = ""; HtmlAgilityPack.HtmlNode curr = startNode.NextSibling;
-                    while (curr != null)
-                    {
-                        if (curr.NodeType == HtmlAgilityPack.HtmlNodeType.Element && curr.Attributes.Contains("id")) break;
-                        if (curr.NodeType == HtmlAgilityPack.HtmlNodeType.Text) text += curr.InnerText;
-                        curr = curr.NextSibling;
-                    }
-                    return System.Net.WebUtility.HtmlDecode(text).Trim();
-                }
-                return "";
+                    FilePath = imgPath,
+                    ImageSource = bitmap, // Use the unlocked bitmap!
+                    BorderColor = imgPath == customBgPath ? (Brush)new BrushConverter().ConvertFrom("#00B478") : Brushes.Transparent
+                });
             }
-            catch { return ""; }
+            BgGalleryList.ItemsSource = galleryItems;
         }
+
+        private void BtnAddBibleBg_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog ofd = new Microsoft.Win32.OpenFileDialog() { Filter = "Image Files|*.jpg;*.jpeg;*.png" };
+            if (ofd.ShowDialog() == true)
+            {
+                string targetFolder = System.IO.Path.Combine(FileHelper.GetAppFolder(), @"WebTemplate\BibleBackgrounds");
+                if (!System.IO.Directory.Exists(targetFolder)) System.IO.Directory.CreateDirectory(targetFolder);
+
+                string safeName = System.IO.Path.GetFileName(ofd.FileName).Replace(" ", "_");
+                string destFile = System.IO.Path.Combine(targetFolder, safeName);
+                System.IO.File.Copy(ofd.FileName, destFile, true);
+
+                LoadBibleBackgrounds();
+            }
+        }
+
+        private void BgGalleryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (BgGalleryList.SelectedItem is GalleryItem selected)
+            {
+                customBgPath = selected.FilePath;
+                System.IO.File.WriteAllText(System.IO.Path.Combine(FileHelper.GetAppFolder(), "bible_bg_memory.txt"), customBgPath);
+
+                foreach (var item in galleryItems) item.BorderColor = item == selected ? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478") : System.Windows.Media.Brushes.Transparent;
+
+                if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) DisplayVerse();
+                BgGalleryList.SelectedIndex = -1;
+            }
+        }
+
+        
+
+        private void BtnClearBibleBg_Click(object sender, RoutedEventArgs e)
+        {
+            customBgPath = "";
+            System.IO.File.WriteAllText(System.IO.Path.Combine(FileHelper.GetAppFolder(), "bible_bg_memory.txt"), "");
+            if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) DisplayVerse();
+        }
+
+        private void BtnDeleteBibleBg_Click(object sender, RoutedEventArgs e)
+        {
+            Button btn = sender as Button;
+            string imgPath = btn.Tag.ToString();
+            if (System.IO.File.Exists(imgPath)) System.IO.File.Delete(imgPath);
+
+            if (customBgPath == imgPath) BtnClearBibleBg_Click(null, null);
+            LoadBibleBackgrounds();
+        }
+
         // ----------------------------------------------------------------
         // TEMPORARY JSON TO BIBLE DATABASE CONVERTER
         // ----------------------------------------------------------------
@@ -979,12 +1199,34 @@ namespace RehobothMediaPro
 
         private void BtnToggleSidebar_Click(object sender, RoutedEventArgs e)
         {
-            // Smoothly animates the wrapper. Because the Grid Column is "Auto", 
-            // the main content will instantly expand to fill the screen!
+            var mainBorder = this.Content as Border;
+            if (mainBorder != null && mainBorder.Effect != null) mainBorder.Effect = null;
+
+            // FIX: Hard-lock the width of the Bible Dashboard so it CANNOT recalculate its layout!
+            if (BibleDashboard.Visibility == Visibility.Visible)
+            {
+                BibleDashboard.Width = BibleDashboard.ActualWidth;
+            }
+
             System.Windows.Media.Animation.DoubleAnimation animation = new System.Windows.Media.Animation.DoubleAnimation();
             animation.To = isSidebarOpen ? 0 : 255;
-            animation.Duration = TimeSpan.FromMilliseconds(250);
+            animation.Duration = TimeSpan.FromMilliseconds(200);
             animation.EasingFunction = new System.Windows.Media.Animation.QuadraticEase() { EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut };
+
+            animation.Completed += (s, ev) =>
+            {
+                if (mainBorder != null)
+                {
+                    mainBorder.Effect = new System.Windows.Media.Effects.DropShadowEffect()
+                    { BlurRadius = 15, ShadowDepth = 5, Opacity = 0.5, Color = Colors.Black };
+                }
+
+                // UNLOCK the width so it snaps to the new screen size perfectly!
+                if (BibleDashboard.Visibility == Visibility.Visible)
+                {
+                    BibleDashboard.Width = double.NaN; // double.NaN means "Auto" in WPF
+                }
+            };
 
             SidebarWrapper.BeginAnimation(WidthProperty, animation);
             isSidebarOpen = !isSidebarOpen;
@@ -1093,14 +1335,14 @@ namespace RehobothMediaPro
                 chromeHelper.RefreshChrome();
 
                 btn.Content = "❌ REMOVE TITLE";
-                btn.Background = (Brush)new BrushConverter().ConvertFrom("#FF4757");
+                btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF4757");
                 isLtTextLive = true;
             }
             else
             {
                 FadeOutLowerThird();
                 btn.Content = "🚀 GO LIVE!";
-                btn.Background = (Brush)new BrushConverter().ConvertFrom("#00B478");
+                btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
                 isLtTextLive = false;
             }
 
@@ -1223,13 +1465,13 @@ namespace RehobothMediaPro
             if (isLtVideoPlaying)
             {
                 BtnLtPlayPause.Content = "⏸ PAUSE LIVE";
-                BtnLtPlayPause.Background = (Brush)new BrushConverter().ConvertFrom("#6C5DD3");
+                BtnLtPlayPause.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#6C5DD3");
                 chromeHelper.ToggleVideoPlayback(true);
             }
             else
             {
                 BtnLtPlayPause.Content = "▶ PLAY LIVE";
-                BtnLtPlayPause.Background = (Brush)new BrushConverter().ConvertFrom("#00B478");
+                BtnLtPlayPause.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
                 chromeHelper.ToggleVideoPlayback(false);
             }
         }
@@ -1248,12 +1490,12 @@ namespace RehobothMediaPro
             if (isPreviewVideoPlaying)
             {
                 BtnPreviewPlayPause.Content = "⏸ PAUSE PREVIEW";
-                BtnPreviewPlayPause.Background = (Brush)new BrushConverter().ConvertFrom("#FF9F43");
+                BtnPreviewPlayPause.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF9F43");
             }
             else
             {
                 BtnPreviewPlayPause.Content = "▶ PLAY PREVIEW";
-                BtnPreviewPlayPause.Background = (Brush)new BrushConverter().ConvertFrom("#00B478");
+                BtnPreviewPlayPause.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
             }
         }
 
@@ -1330,7 +1572,7 @@ namespace RehobothMediaPro
                 fileHelper.SaveasHtmlForEventList("Birthday", bdayList.Select(b => b.Name).ToList(), bdayList.Select(b => b.Date).ToList(), false);
                 chromeHelper.RefreshChrome();
                 btn.Content = "❌ REMOVE FROM LIVE";
-                btn.Background = (Brush)new BrushConverter().ConvertFrom("#FF4757");
+                btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF4757");
                 isBdayLive = true;
             }
             else
@@ -1338,7 +1580,7 @@ namespace RehobothMediaPro
                 // FIX: Use classList.add so we don't erase the entry class and trigger a hard cut!
                 chromeHelper.ExecuteJavascriptOnLive("document.body.classList.add('animate-out');");
                 btn.Content = "🚀 PUSH LIVE";
-                btn.Background = (Brush)new BrushConverter().ConvertFrom("#00B478");
+                btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
                 isBdayLive = false;
             }
         }
@@ -1353,14 +1595,14 @@ namespace RehobothMediaPro
                 fileHelper.SaveasHtmlForEventList("Anniversary", annivList.Select(a => a.Name).ToList(), annivList.Select(a => a.Date).ToList(), true);
                 chromeHelper.RefreshChrome();
                 btn.Content = "❌ REMOVE FROM LIVE";
-                btn.Background = (Brush)new BrushConverter().ConvertFrom("#FF4757");
+                btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF4757");
                 isAnnivLive = true;
             }
             else
             {
                 chromeHelper.ExecuteJavascriptOnLive("document.body.classList.add('animate-out');");
                 btn.Content = "🚀 PUSH LIVE";
-                btn.Background = (Brush)new BrushConverter().ConvertFrom("#00B478");
+                btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
                 isAnnivLive = false;
             }
         }
@@ -1422,7 +1664,7 @@ namespace RehobothMediaPro
             if (isEventScrolling)
             {
                 BtnEventScroll.Content = "⏸ PAUSE SCROLL";
-                BtnEventScroll.Background = (Brush)new BrushConverter().ConvertFrom("#FF9F43");
+                BtnEventScroll.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF9F43");
 
                 double speedVal = 11 - EventScrollSpeed.Value;
 
@@ -1447,7 +1689,7 @@ namespace RehobothMediaPro
             else
             {
                 BtnEventScroll.Content = "▶ START SCROLL";
-                BtnEventScroll.Background = (Brush)new BrushConverter().ConvertFrom("#2D3047");
+                BtnEventScroll.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#2D3047");
 
                 // Freeze by reading the exact pixel location it is currently at!
                 chromeHelper.ExecuteJavascriptOnLive(@"
@@ -1872,7 +2114,7 @@ namespace RehobothMediaPro
         // Sleek Dark-Mode Dialog for Ancient .xls files
         private int? ShowSheetSelectionDialog(List<string> sheetNames)
         {
-            Window prompt = new Window() { Width = 350, Height = 200, Title = "Select Sheet", WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = (Brush)new BrushConverter().ConvertFrom("#0F111A"), Foreground = Brushes.White, WindowStyle = WindowStyle.ToolWindow };
+            Window prompt = new Window() { Width = 350, Height = 200, Title = "Select Sheet", WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#0F111A"), Foreground = Brushes.White, WindowStyle = WindowStyle.ToolWindow };
             StackPanel panel = new StackPanel() { Margin = new Thickness(20) };
 
             panel.Children.Add(new TextBlock() { Text = "This .xls file has multiple tabs.\nWhich one do you want to import from?", Margin = new Thickness(0, 0, 0, 10), Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap });
@@ -1882,7 +2124,7 @@ namespace RehobothMediaPro
             cbSheets.SelectedIndex = 0;
             panel.Children.Add(cbSheets);
 
-            Button btn = new Button() { Content = "IMPORT", Height = 35, Margin = new Thickness(0, 20, 0, 0), Background = (Brush)new BrushConverter().ConvertFrom("#6C5DD3"), Foreground = Brushes.White, Cursor = Cursors.Hand, BorderThickness = new Thickness(0) };
+            Button btn = new Button() { Content = "IMPORT", Height = 35, Margin = new Thickness(0, 20, 0, 0), Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#6C5DD3"), Foreground = Brushes.White, Cursor = Cursors.Hand, BorderThickness = new Thickness(0) };
             btn.Click += (s, e) => prompt.DialogResult = true;
             panel.Children.Add(btn);
 
@@ -1921,7 +2163,7 @@ namespace RehobothMediaPro
                 {
                     RemoteServer.Start();
                     BtnToggleServer.Content = "🛑 STOP SERVER";
-                    BtnToggleServer.Background = (Brush)new BrushConverter().ConvertFrom("#FF4757"); // Red
+                    BtnToggleServer.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF4757"); // Red
                     ServerUrlBox.Text = RemoteServer.ServerUrl;
                     ServerInfoPanel.Visibility = Visibility.Visible;
                 }
@@ -1934,7 +2176,7 @@ namespace RehobothMediaPro
             {
                 RemoteServer.Stop();
                 BtnToggleServer.Content = "🚀 START SERVER";
-                BtnToggleServer.Background = (Brush)new BrushConverter().ConvertFrom("#00B478"); // Green
+                BtnToggleServer.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478"); // Green
                 ServerInfoPanel.Visibility = Visibility.Collapsed;
             }
         }
@@ -1988,36 +2230,175 @@ namespace RehobothMediaPro
             if (isSidebarOpen) BtnToggleSidebar_Click(null, null);
         }
 
-        private void BtnSaveGradient_Click(object sender, RoutedEventArgs e)
+        // Opens the native Windows Color Wheel!
+        // Explicitly forces System.Drawing for the conversion so WPF doesn't get confused!
+        // Opens the native Windows Color Wheel!
+        private void BtnPickGrad1_Click(object sender, RoutedEventArgs e)
         {
-            System.IO.File.WriteAllText(System.IO.Path.Combine(FileHelper.GetAppFolder(), "gradient_memory.txt"), $"{TxtGrad1.Text}|{TxtGrad2.Text}");
-            MessageBox.Show("Presentation Gradient Saved!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.Forms.ColorDialog cd = new System.Windows.Forms.ColorDialog();
+            if (cd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                string hex = System.Drawing.ColorTranslator.ToHtml(cd.Color);
+                BtnGrad1.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom(hex);
+                BtnGrad1.Tag = hex;
+            }
         }
 
-        private void SongDropdownList_KeyUp(object sender, KeyEventArgs e)
+        private void BtnPickGrad2_Click(object sender, RoutedEventArgs e)
         {
-            // Ignore navigation keys so you can use arrows to select a song!
-            if (e.Key == Key.Enter || e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.Left || e.Key == Key.Right) return;
-
-            TextBox tb = SongDropdownList.Template.FindName("PART_EditableTextBox", SongDropdownList) as TextBox;
-            if (tb != null)
+            System.Windows.Forms.ColorDialog cd = new System.Windows.Forms.ColorDialog();
+            if (cd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                string query = tb.Text.ToLower();
-                var list = fileHelper.FiletoList("SongDataBaseList");
-
-                // Matches anywhere in the title!
-                var matches = list.Where(x => x.ToLower().Contains(query)).OrderBy(x => x).ToList();
-
-                // Temporarily unplug the event so it doesn't wipe your typing!
-                SongDropdownList.SelectionChanged -= SongDropdownList_SelectionChanged;
-                SongDropdownList.ItemsSource = matches;
-                SongDropdownList.IsDropDownOpen = true;
-                SongDropdownList.SelectionChanged += SongDropdownList_SelectionChanged;
-
-                // Keep your cursor exactly where you left off
-                tb.Text = query;
-                tb.CaretIndex = query.Length;
+                string hex = System.Drawing.ColorTranslator.ToHtml(cd.Color);
+                BtnGrad2.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom(hex);
+                BtnGrad2.Tag = hex;
             }
+        }
+
+        // FIX: The Save Button actually writes to the hard drive now!
+        private void BtnSaveGradient_Click(object sender, RoutedEventArgs e)
+        {
+            string g1 = BtnGrad1.Tag?.ToString() ?? "#0f2027";
+            string g2 = BtnGrad2.Tag?.ToString() ?? "#2c5364";
+            System.IO.File.WriteAllText(System.IO.Path.Combine(FileHelper.GetAppFolder(), "gradient_memory.txt"), $"{g1}|{g2}");
+
+            // Instantly refresh the screen if a song is playing!
+            if (FinalHtmlModels != null && FinalHtmlModels.Count > 0) ChoosLyrics();
+
+            MessageBox.Show("Presentation Gradient Saved! The app will remember this forever.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        // ----------------------------------------------------------------
+        // SMART SONG SEARCH ENGINE
+        // ----------------------------------------------------------------
+        private void SongSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isSongLoading) return; // Ignore if we just loaded a song
+
+            string query = SongSearchBox.Text.ToLower().Trim();
+            if (string.IsNullOrEmpty(query))
+            {
+                SongSuggestionPopup.IsOpen = false;
+                return;
+            }
+
+            // Filters instantly based on middle-words!
+            var matches = songDatabaseMemory.Where(x => x.ToLower().Contains(query)).ToList();
+
+            if (matches.Count > 0)
+            {
+                SongSuggestionList.ItemsSource = matches;
+                SongSuggestionPopup.IsOpen = true;
+            }
+            else
+            {
+                SongSuggestionPopup.IsOpen = false;
+            }
+        }
+
+        // Passes Arrow Keys from the TextBox into the Suggestion List!
+        private void SongSearchBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (SongSuggestionPopup.IsOpen && e.Key == Key.Down)
+            {
+                SongSuggestionList.Focus();
+                SongSuggestionList.SelectedIndex = 0; // Highlights the first song automatically
+                e.Handled = true;
+            }
+        }
+
+        // Handles Hitting Enter inside the Suggestion List
+        // Handles Hitting Enter inside the Suggestion List
+        private void SongSuggestionList_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && SongSuggestionList.SelectedItem != null)
+            {
+                LoadSongIntoEditor(SongSuggestionList.SelectedItem.ToString());
+                e.Handled = true;
+            }
+        }
+
+        // NEW: Handles physically clicking the item with your mouse!
+        private void SongSuggestionList_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            var item = ItemsControl.ContainerFromElement(SongSuggestionList, e.OriginalSource as DependencyObject) as ListBoxItem;
+            if (item != null && item.DataContext != null)
+            {
+                LoadSongIntoEditor(item.DataContext.ToString());
+                e.Handled = true;
+            }
+        }
+
+        // Handles Mouse Clicking inside the Suggestion List
+
+        // The Master Loader
+        private void LoadSongIntoEditor(string safeFileName)
+        {
+            isSongLoading = true; // Lock the text changed event!
+
+            SongSearchBox.Text = safeFileName;
+            SongSuggestionPopup.IsOpen = false; // Close the menu
+            SongSuggestionList.SelectedIndex = -1;
+
+            string baseDir = FileHelper.GetAppFolder();
+            string fullPath = System.IO.Path.Combine(baseDir, $@"WebTemplate\SongDataBase\{safeFileName}.txt");
+
+            if (System.IO.File.Exists(fullPath))
+            {
+                string rawText = System.IO.File.ReadAllText(fullPath);
+                LyricsInputBox.Text = rawText.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+            }
+            else LyricsInputBox.Text = string.Empty;
+
+            isSongLoading = false; // Unlock
+        }
+        // Deletes a song from the Setlist
+        private void BtnRemoveFromSetlist_Click(object sender, RoutedEventArgs e)
+        {
+            Button btn = sender as Button;
+            string songToRemove = btn.Tag.ToString();
+            SetlistBox.Items.Remove(songToRemove);
+            if (SetlistBox.Items.Count == 0) LblSetlistEmpty.Visibility = Visibility.Visible;
+            e.Handled = true; // Prevents the ListBox from accidentally selecting the item!
+        }
+
+        // Applies custom scroll sensitivity to the Chapter List!
+        private void ChapterVerseList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            ScrollViewer sv = GetDescendantByType<ScrollViewer>(ChapterVerseList);
+            if (sv != null)
+            {
+                // Math: Slider goes 1-100. Lower is slower, higher is faster!
+                double scrollAmount = (BibleScrollSensitivity.Value / 10.0) * Math.Sign(e.Delta) * -10;
+                sv.ScrollToVerticalOffset(sv.VerticalOffset + scrollAmount);
+                e.Handled = true;
+            }
+        }
+
+        // Helper to find the hidden ScrollViewer inside the ListBox
+        public static T GetDescendantByType<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj == null) return null;
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+            {
+                var child = VisualTreeHelper.GetChild(depObj, i);
+                var result = (child as T) ?? GetDescendantByType<T>(child);
+                if (result != null) return result;
+            }
+            return null;
+        }
+        public class GalleryItem : System.ComponentModel.INotifyPropertyChanged
+        {
+            public string FilePath { get; set; }
+
+            // NEW: Holds the unlocked image!
+            public System.Windows.Media.ImageSource ImageSource { get; set; }
+
+            private Brush _borderColor = Brushes.Transparent;
+            public Brush BorderColor { get { return _borderColor; } set { _borderColor = value; OnPropertyChanged("BorderColor"); } }
+
+            public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+            protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
         }
     }
 }

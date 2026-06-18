@@ -56,10 +56,36 @@
             </Setter>
         </Style>
 
+        <!-- CHROME-STYLE SCROLLBARS -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid>
+                            <Border Background="Transparent"/>
+                            <Track x:Name="PART_Track" IsDirectionReversed="true">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#4A4D67" CornerRadius="4" Margin="0"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- BIBLE CHAPTER PREVIEW TEMPLATES -->
         <DataTemplate x:Key="SingleLangTemplate">
             <StackPanel Margin="5,5,5,15">
-                <TextBlock Text="{Binding PrimaryText}" TextWrapping="Wrap" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top"/>
+                <TextBlock Text="{Binding PrimaryText}" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top"/>
             </StackPanel>
         </DataTemplate>
 
@@ -72,7 +98,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="{Binding PrimaryText}" TextWrapping="Wrap" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top"/>
+                <TextBlock Grid.Column="0" Text="{Binding PrimaryText}" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top"/>
 
                 <!-- FIX: Line is now locked INSIDE the gap! It will never touch the text. -->
                 <Border Grid.Column="1" Width="1" Background="#2D3047" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="0,5"/>
@@ -110,7 +136,7 @@
             </Border>
 
             <!-- LEFT SIDEBAR WRAPPER -->
-            <Grid x:Name="SidebarWrapper" Grid.Row="1" Grid.Column="0" Width="255" ClipToBounds="True">
+            <Grid x:Name="SidebarWrapper" Grid.Row="1" Grid.Column="0" Width="255" ClipToBounds="True" CacheMode="BitmapCache">
                 <Border Background="#1C1E30" CornerRadius="10" Margin="15,0,0,15" Width="240" HorizontalAlignment="Left">
                     <StackPanel Margin="0,20,0,0">
                         <TextBlock Text="Rehoboth Media" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
@@ -148,7 +174,68 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <ComboBox x:Name="SongDropdownList" SelectionChanged="SongDropdownList_SelectionChanged" KeyUp="SongDropdownList_KeyUp" IsTextSearchEnabled="False" StaysOpenOnEdit="True" Height="35" Margin="0,0,0,15" FontSize="14" IsEditable="True" Background="White" Foreground="Black" Padding="5"/>
+                            <!-- NEW: Smart Dropdown & Sunday Setlist Queue -->
+                            <Grid Grid.Row="0" Margin="0,0,0,15">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="140"/>
+                                    <!-- Fixed height for the Playlist -->
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- FIX: Flawless Custom Search Engine! (No more buggy ComboBoxes!) -->
+                                    <Grid Grid.Column="0">
+                                        <!-- FIX: Added a sleek rounded Border around the TextBox! -->
+                                        <Border Background="White" CornerRadius="8" BorderThickness="0">
+                                            <TextBox x:Name="SongSearchBox" Height="35" FontSize="14" Background="Transparent" Foreground="Black" Padding="10,0" VerticalContentAlignment="Center" BorderThickness="0" TextChanged="SongSearchBox_TextChanged" KeyDown="SongSearchBox_KeyDown"/>
+                                        </Border>
+
+                                        <Popup x:Name="SongSuggestionPopup" PlacementTarget="{Binding ElementName=SongSearchBox}" StaysOpen="False" IsOpen="False" MaxHeight="250" Width="{Binding ElementName=SongSearchBox, Path=ActualWidth}">
+                                            <Border Background="White" BorderThickness="1" BorderBrush="Gray" CornerRadius="0,0,8,8" SnapsToDevicePixels="True">
+                                                <ListBox x:Name="SongSuggestionList" Background="Transparent" BorderThickness="0" Foreground="Black" FontSize="14" ScrollViewer.HorizontalScrollBarVisibility="Disabled" PreviewMouseUp="SongSuggestionList_PreviewMouseUp" KeyDown="SongSuggestionList_KeyDown">
+                                                    <ListBox.ItemContainerStyle>
+                                                        <Style TargetType="ListBoxItem">
+                                                            <Setter Property="Padding" Value="10,8"/>
+                                                            <Setter Property="Cursor" Value="Hand"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#E0E0E0"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ListBox.ItemContainerStyle>
+                                                </ListBox>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                    <Button Grid.Column="1" Content="➕ Add to Setlist" Height="35" Padding="10,0" Margin="10,0,0,0" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnAddToSetlist_Click"/>
+                                </Grid>
+
+                                <!-- The Temporary Setlist Box -->
+                                <Border Grid.Row="1" Background="#0F111A" CornerRadius="8" BorderThickness="1" BorderBrush="#2D3047" Margin="0,15,0,0">
+                                    <Grid>
+                                        <TextBlock Text="Sunday Setlist Queue (Empty)" x:Name="LblSetlistEmpty" Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center" Panel.ZIndex="0"/>
+                                        <ListBox x:Name="SetlistBox" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" Padding="5" SelectionChanged="SetlistBox_SelectionChanged" Panel.ZIndex="1">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding}" VerticalAlignment="Center" Foreground="WhiteSmoke"/>
+                                                        <Button Grid.Column="1" Content="✕" Width="25" Height="25" Background="Transparent" Foreground="#FF4757" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Click="BtnRemoveFromSetlist_Click" Tag="{Binding}"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </Border>
+                            </Grid>
                             <Grid Grid.Row="1" Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -223,71 +310,78 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- LEFT COLUMN: Controls -->
+                        <!-- LEFT COLUMN: Bible Controls & Styling -->
                         <Border Grid.Column="0" Background="#0F111A" CornerRadius="10" Padding="15" Margin="0,0,15,0">
-                            <StackPanel>
-                                <TextBlock Text="Smart Search" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
-                                <TextBlock Text="e.g. 'Gen', 'Est 1', or '1 jo 1 1'" Foreground="LightGray" FontSize="11" Margin="0,0,0,5"/>
-                                <Border Background="#1C1E30" CornerRadius="8" BorderThickness="1" BorderBrush="#6C5DD3" Margin="0,0,0,15" Padding="10,0">
-                                    <TextBox x:Name="BibleSearchBox" Height="30" Background="Transparent" Foreground="White" FontSize="16" FontWeight="Bold" BorderThickness="0" VerticalContentAlignment="Center" KeyDown="BibleSearchBox_KeyDown" PreviewMouseDown="BibleSearchBox_PreviewMouseDown" CaretBrush="White"/>
-                                </Border>
+                            <!-- FIX: Using a Grid with a * row ensures the ListBox gets exactly the remaining space! -->
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- All the fixed controls -->
+                                    <RowDefinition Height="*"/>
+                                    <!-- The expanding History List -->
+                                </Grid.RowDefinitions>
 
-                                <TextBlock Text="Languages" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,0,0,10"/>
-                                <Button Content="↕ SWAP PRI/SEC" Height="25" Background="#2D3047" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnSwapLanguages_Click" Margin="0,0,0,10"/>
-                                <!-- FIX: Added Click events to instantly update when checked/unchecked! -->
-                                <CheckBox x:Name="chkTamil" Content="Tamil Bible" Foreground="White" IsChecked="True" Margin="0,3" Click="LanguageCheckbox_Click"/>
-                                <CheckBox x:Name="chkEnglish" Content="English Bible" Foreground="White" Margin="0,3" Click="LanguageCheckbox_Click"/>
-                                <CheckBox x:Name="chkHindi" Content="Hindi Bible" Foreground="White" Margin="0,3" Click="LanguageCheckbox_Click"/>
-                                <CheckBox x:Name="chkMarathi" Content="Marathi Bible" Foreground="White" Margin="0,3" Click="LanguageCheckbox_Click"/>
+                                <!-- Top Controls -->
+                                <StackPanel Grid.Row="0" Margin="0,0,5,0">
+                                    <TextBlock Text="Smart Search" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                                    <TextBlock Text="e.g. 'Gen', 'Est 1', or '1 jo 1 1'" Foreground="LightGray" FontSize="11" Margin="0,0,0,5"/>
+                                    <Border Background="#1C1E30" CornerRadius="8" BorderThickness="1" BorderBrush="#6C5DD3" Margin="0,0,0,15" Padding="10,0">
+                                        <TextBox x:Name="BibleSearchBox" Height="30" Background="Transparent" Foreground="White" FontSize="16" FontWeight="Bold" BorderThickness="0" VerticalContentAlignment="Center" KeyDown="BibleSearchBox_KeyDown" PreviewMouseDown="BibleSearchBox_PreviewMouseDown" CaretBrush="White"/>
+                                    </Border>
 
-                                <TextBlock Text="Custom Styling" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,15,0,5"/>
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Text="Verse Font:" Foreground="LightGray" FontSize="11" Grid.Row="0" Grid.Column="0"/>
-                                    <ComboBox x:Name="CbVerseFont" Grid.Row="1" Grid.Column="0" Margin="0,0,5,5" SelectionChanged="BibleStyle_Changed"/>
-                                    <TextBlock Text="Verse Color:" Foreground="LightGray" FontSize="11" Grid.Row="0" Grid.Column="1"/>
-                                    <ComboBox x:Name="CbVerseColor" Grid.Row="1" Grid.Column="1" Margin="5,0,0,5" SelectionChanged="BibleStyle_Changed"/>
-                                    <TextBlock Text="Ref Font:" Foreground="LightGray" FontSize="11" Grid.Row="2" Grid.Column="0"/>
-                                    <ComboBox x:Name="CbRefFont" Grid.Row="3" Grid.Column="0" Margin="0,0,5,0" SelectionChanged="BibleStyle_Changed"/>
-                                    <TextBlock Text="Ref Color:" Foreground="LightGray" FontSize="11" Grid.Row="2" Grid.Column="1"/>
-                                </Grid>
+                                    <TextBlock Text="Languages" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,0,0,10"/>
+                                    <Button Content="↕ SWAP PRI/SEC" Height="25" Background="#2D3047" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnSwapLanguages_Click" Margin="0,0,0,10"/>
+                                    <CheckBox x:Name="chkTamil" Content="Tamil Bible" Foreground="White" IsChecked="True" Margin="0,3" Click="LanguageCheckbox_Click"/>
+                                    <CheckBox x:Name="chkEnglish" Content="English Bible" Foreground="White" Margin="0,3" Click="LanguageCheckbox_Click"/>
+                                    <CheckBox x:Name="chkHindi" Content="Hindi Bible" Foreground="White" Margin="0,3" Click="LanguageCheckbox_Click"/>
+                                    <CheckBox x:Name="chkMarathi" Content="Marathi Bible" Foreground="White" Margin="0,3" Click="LanguageCheckbox_Click"/>
 
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                                    <TextBlock Text="Font Size Override:" Foreground="LightGray" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                    <Button Content="+" Width="30" Height="30" Background="#2D3047" Margin="0,0,3,0" Click="BtnBibleFontUp_Click"/>
-                                    <Button Content="-" Width="30" Height="30" Background="#2D3047" Margin="0,0,3,0" Click="BtnBibleFontDown_Click"/>
-                                    <Button Content="↺" Width="30" Height="30" Background="#FF4757" Click="BtnBibleFontReset_Click"/>
+                                    <TextBlock Text="Custom Styling" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,15,0,5"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition/>
+                                            <RowDefinition/>
+                                            <RowDefinition/>
+                                            <RowDefinition/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Verse Font:" Foreground="LightGray" FontSize="11" Grid.Row="0" Grid.Column="0"/>
+                                        <ComboBox x:Name="CbVerseFont" Grid.Row="1" Grid.Column="0" Margin="0,0,5,5" SelectionChanged="BibleStyle_Changed"/>
+                                        <TextBlock Text="Verse Color:" Foreground="LightGray" FontSize="11" Grid.Row="0" Grid.Column="1"/>
+                                        <ComboBox x:Name="CbVerseColor" Grid.Row="1" Grid.Column="1" Margin="5,0,0,5" SelectionChanged="BibleStyle_Changed"/>
+                                        <TextBlock Text="Ref Font:" Foreground="LightGray" FontSize="11" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"/>
+                                        <ComboBox x:Name="CbRefFont" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,0" SelectionChanged="BibleStyle_Changed"/>
+                                    </Grid>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <TextBlock Text="Font Size Override:" Foreground="LightGray" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                        <Button Content="+" Width="30" Height="30" Background="#2D3047" Margin="0,0,3,0" Click="BtnBibleFontUp_Click"/>
+                                        <Button Content="-" Width="30" Height="30" Background="#2D3047" Margin="0,0,3,0" Click="BtnBibleFontDown_Click"/>
+                                        <Button Content="↺ Reset" Width="55" Height="30" Background="#FF4757" Click="BtnBibleFontReset_Click"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Font Weight:" Foreground="LightGray" FontSize="11" Margin="0,0,0,5"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <CheckBox x:Name="chkPriBold" Content="Primary Bold" Foreground="White" IsChecked="True" Margin="0,0,15,0" Click="BibleStyle_Changed"/>
+                                        <CheckBox x:Name="chkSecBold" Content="Secondary Bold" Foreground="White" IsChecked="True" Click="BibleStyle_Changed"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Recent Verses" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
                                 </StackPanel>
 
-                                <TextBlock Text="Background Image" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,5,0,10"/>
-                                <Grid Margin="0,0,0,5">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Column="0" Content="🖼️ Browse" Height="30" Background="#2D3047" Foreground="White" Margin="0,0,5,0" BorderThickness="0" Cursor="Hand" Click="BtnBrowseBg_Click"/>
-                                    <Button Grid.Column="1" Content="❌ Remove" Height="30" Background="#FF4757" Foreground="White" Margin="5,0,0,0" BorderThickness="0" Cursor="Hand" Click="BtnRemoveBg_Click"/>
-                                </Grid>
-                                <TextBlock x:Name="LblBgStatus" Text="Solid Black" Foreground="Gray" FontSize="11" Margin="0,0,0,15" TextWrapping="Wrap"/>
-                                <TextBlock Text="Recent Verses" Foreground="#6C5DD3" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
-                                <Border Background="#1C1E30" CornerRadius="5" Padding="5" Height="135">
-                                    <ListBox x:Name="HistoryList" Background="Transparent" BorderThickness="0" Foreground="White" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="HistoryList_SelectionChanged">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding}" Padding="5" Cursor="Hand" FontSize="12"/>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Border>
-                            </StackPanel>
+                                <!-- Bottom: Scrolling History List -->
+                                <!-- FIX: The ListBox is directly inside the * row, forcing it to stretch to the bottom with a perfect scrollbar! -->
+                                <ListBox x:Name="HistoryList" Grid.Row="1" Background="#1C1E30" BorderThickness="0" Foreground="White" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="HistoryList_SelectionChanged" Padding="5">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Padding="5" Cursor="Hand" FontSize="12"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
                         </Border>
 
                         <!-- RIGHT COLUMN: Massive Chapter Preview & Live Controls -->
@@ -315,15 +409,20 @@
                                 <TextBlock x:Name="LblChapterTitle" Grid.Row="1" Text="Chapter Preview" Foreground="#00B478" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,15"/>
 
                                 <!-- FIX: Removed the buggy background line. The ListBox now stretches 100% width! -->
-                                <ListBox x:Name="ChapterVerseList" Grid.Row="2" Background="Transparent" BorderThickness="0" Foreground="White" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="ChapterVerseList_SelectionChanged" HorizontalContentAlignment="Stretch">
+                                <ListBox x:Name="ChapterVerseList" Grid.Row="2" Background="Transparent" BorderThickness="0" Foreground="White" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingStackPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="False" SelectionChanged="ChapterVerseList_SelectionChanged" HorizontalContentAlignment="Stretch" PreviewMouseWheel="ChapterVerseList_PreviewMouseWheel">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
                                             <Setter Property="VerticalContentAlignment" Value="Top"/>
-                                            <!-- THIS IS THE MAGIC FIX: Forces perfect alignment down the whole screen -->
                                             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                             <Setter Property="BorderBrush" Value="#2D3047"/>
                                             <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                             <Setter Property="Padding" Value="10"/>
+                                            <!-- FIX: Forces a permanent Purple highlight when selected! -->
+                                            <Style.Triggers>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter Property="Background" Value="#6C5DD3"/>
+                                                </Trigger>
+                                            </Style.Triggers>
                                         </Style>
                                     </ListBox.ItemContainerStyle>
                                 </ListBox>
@@ -714,53 +813,82 @@
                         <Border Background="#1C1E30" CornerRadius="10" Padding="40" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <StackPanel HorizontalAlignment="Center">
                                 <TextBlock Text="⚙️ Global Settings" Foreground="#6C5DD3" FontWeight="Bold" FontSize="28" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                                <TextBlock Text="Configure global app behaviors and default media." Foreground="LightGray" FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,40"/>
+                                <TextBlock Text="Configure global app behaviors and default media." Foreground="LightGray" FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,30"/>
 
-                                <!-- Default Theme Loop Setting -->
-                                <Border Background="#0F111A" CornerRadius="10" Padding="20" Width="400">
-                                    <StackPanel>
-                                        <TextBlock Text="Default Background Theme Loop" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-                                        <TextBlock Text="This video will play silently on a continuous loop whenever you click 'Theme/Logo' or open the Live Display. Use a high-quality .mp4 file." Foreground="Gray" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
-
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition/>
-                                                <ColumnDefinition Width="10"/>
-                                                <ColumnDefinition/>
-                                            </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" Content="📂 Upload Theme Video" Height="35" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnUploadThemeVideo_Click"/>
-                                            <Button Grid.Column="2" Content="❌ Restore Black Screen" Height="35" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnRestoreBlackTheme_Click"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-                        <!-- Bible Scroll Sensitivity Setting -->
-                        <Border Background="#0F111A" CornerRadius="10" Padding="20" Width="400" Margin="0,15,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Bible Chapter Scroll Sensitivity" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-                                <Slider x:Name="BibleScrollSensitivity" Minimum="1" Maximum="100" Value="20" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,10,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        <!-- NEW: Presentation Mode Gradient Picker -->
-                        <Border Background="#0F111A" CornerRadius="10" Padding="20" Width="400" Margin="0,15,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Presentation Mode Gradient" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="320"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="320"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Margin="0,0,5,0">
-                                        <TextBlock Text="Color 1 (Hex):" Foreground="Gray" FontSize="11"/>
-                                        <TextBox x:Name="TxtGrad1" Text="#0f2027" Background="#1C1E30" Foreground="White" BorderThickness="0" Padding="5"/>
+
+                                    <!-- LEFT COLUMN: Media Defaults -->
+                                    <StackPanel Grid.Column="0">
+                                        <!-- Theme Loop Video -->
+                                        <Border Background="#0F111A" CornerRadius="10" Padding="20" Margin="0,0,0,15">
+                                            <StackPanel>
+                                                <TextBlock Text="Default Theme Loop (MP4)" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                                <TextBlock Text="This video plays silently on a continuous loop on the Live Display." Foreground="Gray" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
+                                                <Button Content="📂 Upload Theme Video" Height="35" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnUploadThemeVideo_Click" Margin="0,0,0,10"/>
+                                                <Button Content="❌ Restore Black Screen" Height="35" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnRestoreBlackTheme_Click"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Bible Background Gallery -->
+                                        <Border Background="#0F111A" CornerRadius="10" Padding="20">
+                                            <StackPanel>
+                                                <TextBlock Text="Bible Background Gallery" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition/>
+                                                        <ColumnDefinition Width="10"/>
+                                                        <ColumnDefinition/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Button Grid.Column="0" Content="🖼️ Add Image" Height="30" Background="#2D3047" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnAddBibleBg_Click"/>
+                                                    <Button Grid.Column="2" Content="⬛ Solid Black" Height="30" Background="#FF4757" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnClearBibleBg_Click"/>
+                                                </Grid>
+                                                <ListBox x:Name="BgGalleryList" Height="90" Background="#1C1E30" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled" SelectionChanged="BgGalleryList_SelectionChanged" Margin="0,0,0,15">
+                                                    <ListBox.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <VirtualizingStackPanel Orientation="Horizontal"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ListBox.ItemsPanel>
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <!-- FIX: Border is now permanently bound! C# just tells it what color to be! -->
+                                                            <Border BorderThickness="3" CornerRadius="5" Margin="0,0,10,0" BorderBrush="{Binding BorderColor}">
+                                                                <Grid>
+                                                                    <!-- FIX: Bind to ImageSource so it uses the unlocked RAM copy! -->
+                                                                    <Image Source="{Binding ImageSource}" Width="100" Height="60" Stretch="UniformToFill" Cursor="Hand"/>
+                                                                    <Button Content="✕" Width="20" Height="20" Background="Red" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0" FontSize="10" Cursor="Hand" Click="BtnDeleteBibleBg_Click" Tag="{Binding FilePath}"/>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1" Margin="5,0,0,0">
-                                        <TextBlock Text="Color 2 (Hex):" Foreground="Gray" FontSize="11"/>
-                                        <TextBox x:Name="TxtGrad2" Text="#203a43" Background="#1C1E30" Foreground="White" BorderThickness="0" Padding="5"/>
-                                    </StackPanel>
+
+                                    <!-- RIGHT COLUMN: Gradients & Sensitivity -->
+                                    <Border Grid.Column="2" Background="#0F111A" CornerRadius="10" Padding="20" VerticalAlignment="Top">
+                                        <StackPanel>
+                                            <TextBlock Text="Presentation Mode Gradient" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                            <Grid Margin="0,0,0,15">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition/>
+                                                    <ColumnDefinition/>
+                                                </Grid.ColumnDefinitions>
+                                                <Button x:Name="BtnGrad1" Grid.Column="0" Content="Pick Color 1" Height="35" Background="#0f2027" Foreground="White" Margin="0,0,5,0" Cursor="Hand" Click="BtnPickGrad1_Click" BorderThickness="1" BorderBrush="White"/>
+                                                <Button x:Name="BtnGrad2" Grid.Column="1" Content="Pick Color 2" Height="35" Background="#2c5364" Foreground="White" Margin="5,0,0,0" Cursor="Hand" Click="BtnPickGrad2_Click" BorderThickness="1" BorderBrush="White"/>
+                                            </Grid>
+                                            <Button Content="💾 SAVE GRADIENT" Height="30" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,0,0,25" Cursor="Hand" Click="BtnSaveGradient_Click"/>
+
+                                            <TextBlock Text="Bible Chapter Scroll Sensitivity" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                            <Slider x:Name="BibleScrollSensitivity" Minimum="1" Maximum="100" Value="20" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,0,0,0"/>
+                                        </StackPanel>
+                                    </Border>
                                 </Grid>
-                                <Button Content="💾 SAVE GRADIENT" Height="30" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,10,0,0" Cursor="Hand" Click="BtnSaveGradient_Click"/>
                             </StackPanel>
                         </Border>
                     </Grid>
