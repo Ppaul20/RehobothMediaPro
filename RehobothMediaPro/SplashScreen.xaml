@@ -79,10 +79,19 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- BOTTOM: Professional Initialization Text -->
-                <StackPanel Grid.Row="2" VerticalAlignment="Bottom">
-                    <TextBlock x:Name="TxtStatus" Text="Initializing Engine..." Foreground="#A0A5C0" FontSize="12" FontFamily="Segoe UI" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                </StackPanel>
+                <!-- BOTTOM: Professional Initialization Text & Version Number -->
+                <Grid Grid.Row="2" VerticalAlignment="Bottom" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- The Loading Text (Left) -->
+                    <TextBlock x:Name="TxtStatus" Grid.Column="0" Text="Initializing Engine..." Foreground="#A0A5C0" FontSize="12" FontFamily="Segoe UI" FontWeight="SemiBold"/>
+
+                    <!-- The Version Number (Right) -->
+                    <TextBlock Grid.Column="1" Text="v1.4.1" Foreground="#4A4D67" FontSize="12" FontFamily="Segoe UI" FontWeight="Bold"/>
+                </Grid>
             </Grid>
 
             <!-- 4. The Adobe-Style Edge-to-Edge Loading Bar -->

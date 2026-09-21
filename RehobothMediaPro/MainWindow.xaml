@@ -85,7 +85,7 @@
         <!-- BIBLE CHAPTER PREVIEW TEMPLATES -->
         <DataTemplate x:Key="SingleLangTemplate">
             <StackPanel Margin="5,5,5,15">
-                <TextBlock Text="{Binding PrimaryText}" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top"/>
+                <TextBlock Text="{Binding PrimaryText}" FontFamily="pack://application:,,,/#Baloo Thambi 2" FontSize="16" Foreground="WhiteSmoke" VerticalAlignment="Top" TextWrapping="Wrap"/>
             </StackPanel>
         </DataTemplate>
 
@@ -94,16 +94,15 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="30"/>
-                    <!-- The Gap -->
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="{Binding PrimaryText}" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top"/>
+                <!-- FIX: Restored clean, default text bindings so Secondary isn't invisible! -->
+                <TextBlock Grid.Column="0" Text="{Binding PrimaryText}" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top" TextWrapping="Wrap"/>
 
-                <!-- FIX: Line is now locked INSIDE the gap! It will never touch the text. -->
                 <Border Grid.Column="1" Width="1" Background="#2D3047" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="0,5"/>
 
-                <TextBlock Grid.Column="2" Text="{Binding SecondaryText}" TextWrapping="Wrap" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top"/>
+                <TextBlock Grid.Column="2" Text="{Binding SecondaryText}" FontSize="14" Foreground="WhiteSmoke" VerticalAlignment="Top" TextWrapping="Wrap"/>
             </Grid>
         </DataTemplate>
     </Window.Resources>
@@ -148,9 +147,9 @@
                         <Button x:Name="BtnMenuBirthdays" Content="🎂 Birthdays &amp; Anniversaries" Style="{StaticResource MenuButton}" Click="BtnNavBirthdays_Click"/>
                         <Button x:Name="BtnMenuRemote" Content="📱 Mobile Remote" Style="{StaticResource MenuButton}" Click="BtnNavRemote_Click"/>
                         <!-- NEW SETTINGS BUTTON -->
-                        <Button x:Name="BtnMenuSettings" Content="⚙️ Settings" Style="{StaticResource MenuButton}" Margin="10,270,10,5" Click="BtnNavSettings_Click"/>
+                        <Button x:Name="BtnMenuSettings" Content="⚙️ Settings" Style="{StaticResource MenuButton}" Margin="10,275,10,5" Click="BtnNavSettings_Click"/>
                     </StackPanel>
-                   </Border>
+                </Border>
             </Grid>
 
             <!-- MAIN CONTENT AREA -->
@@ -194,16 +193,32 @@
                                             <TextBox x:Name="SongSearchBox" Height="35" FontSize="14" Background="Transparent" Foreground="Black" Padding="10,0" VerticalContentAlignment="Center" BorderThickness="0" TextChanged="SongSearchBox_TextChanged" KeyDown="SongSearchBox_KeyDown"/>
                                         </Border>
 
-                                        <Popup x:Name="SongSuggestionPopup" PlacementTarget="{Binding ElementName=SongSearchBox}" StaysOpen="False" IsOpen="False" MaxHeight="250" Width="{Binding ElementName=SongSearchBox, Path=ActualWidth}">
-                                            <Border Background="White" BorderThickness="1" BorderBrush="Gray" CornerRadius="0,0,8,8" SnapsToDevicePixels="True">
-                                                <ListBox x:Name="SongSuggestionList" Background="Transparent" BorderThickness="0" Foreground="Black" FontSize="14" ScrollViewer.HorizontalScrollBarVisibility="Disabled" PreviewMouseUp="SongSuggestionList_PreviewMouseUp" KeyDown="SongSuggestionList_KeyDown">
+                                        <!-- FIX: The Popup now allows the ListBox to grow naturally to fit long song titles! -->
+                                        <Popup x:Name="SongSuggestionPopup" PlacementTarget="{Binding ElementName=SongSearchBox}" StaysOpen="False" IsOpen="False" MaxHeight="300" MinWidth="{Binding ElementName=SongSearchBox, Path=ActualWidth}">
+                                            <Border Background="White" BorderThickness="1" BorderBrush="Gray" CornerRadius="0,0,8,8" SnapsToDevicePixels="True" MaxWidth="500">
+                                                <!-- FIX: Re-enabled Horizontal Scrolling just in case a title is insanely long! -->
+                                                <ListBox x:Name="SongSuggestionList" Background="Transparent" BorderThickness="0" Foreground="Black" FontSize="14" ScrollViewer.HorizontalScrollBarVisibility="Auto" PreviewMouseUp="SongSuggestionList_PreviewMouseUp" KeyDown="SongSuggestionList_KeyDown">
                                                     <ListBox.ItemContainerStyle>
                                                         <Style TargetType="ListBoxItem">
                                                             <Setter Property="Padding" Value="10,8"/>
                                                             <Setter Property="Cursor" Value="Hand"/>
+                                                            <!-- FIX: Guarantees the text doesn't wrap or chop inside the box -->
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                                                            <TextBlock Text="{Binding}" TextWrapping="NoWrap"/>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
                                                             <Style.Triggers>
                                                                 <Trigger Property="IsMouseOver" Value="True">
                                                                     <Setter Property="Background" Value="#E0E0E0"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Setter Property="Background" Value="#6C5DD3"/>
+                                                                    <Setter Property="Foreground" Value="White"/>
                                                                 </Trigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -251,7 +266,7 @@
                             </Grid>
 
                             <Border Grid.Row="2" Background="#0F111A" CornerRadius="12" Margin="0,0,0,15" Padding="10">
-                                <TextBox x:Name="LyricsInputBox" CaretBrush="White" Background="Transparent" Foreground="White" FontSize="14" AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" />
+                                <TextBox x:Name="LyricsInputBox" FontFamily="pack://application:,,,/#Baloo Thambi 2" CaretBrush="White" Background="Transparent" Foreground="White" FontSize="16" AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" />
                             </Border>
 
                             <Grid Grid.Row="3">
@@ -288,7 +303,6 @@
 
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                                         <Button Content="✨ THEME" Height="35" Padding="10,0" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnThemeLogo_Click"/>
-                                        <Button Content="📺 OPEN LIVE DISPLAY" Height="35" Padding="15,0" Background="#FF9F43" Foreground="Black" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnOpenLive_Click"/>
                                         <Button Content="🟩 GREEN SCREEN" Height="35" Padding="15,0" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnGreenScreen_Click"/>
                                         <Button Content="✕ CLOSE" Height="35" Padding="15,0" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnCloseLive_Click"/>
                                     </StackPanel>
@@ -400,7 +414,7 @@
 
                                 <!-- Top: Live Display Controls -->
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,15">
-                                    <Button Content="📺 OPEN LIVE DISPLAY" Height="35" Padding="15,0" Background="#FF9F43" Foreground="Black" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnOpenLive_Click"/>
+                                    <Button Content="✨ THEME" Height="35" Padding="15,0" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnThemeLogo_Click"/>
                                     <Button Content="🟩 GREEN SCREEN" Height="35" Padding="15,0" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnGreenScreen_Click"/>
                                     <Button Content="✕ CLOSE" Height="35" Padding="15,0" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnCloseLive_Click"/>
                                 </StackPanel>
@@ -409,7 +423,7 @@
                                 <TextBlock x:Name="LblChapterTitle" Grid.Row="1" Text="Chapter Preview" Foreground="#00B478" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,15"/>
 
                                 <!-- FIX: Removed the buggy background line. The ListBox now stretches 100% width! -->
-                                <ListBox x:Name="ChapterVerseList" Grid.Row="2" Background="Transparent" BorderThickness="0" Foreground="White" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingStackPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="False" SelectionChanged="ChapterVerseList_SelectionChanged" HorizontalContentAlignment="Stretch" PreviewMouseWheel="ChapterVerseList_PreviewMouseWheel">
+                                <ListBox x:Name="ChapterVerseList" Grid.Row="2" Background="Transparent" BorderThickness="0" Foreground="White" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingStackPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="False" SelectionChanged="ChapterVerseList_SelectionChanged" HorizontalContentAlignment="Stretch" PreviewMouseLeftButtonUp="ChapterVerseList_PreviewMouseLeftButtonUp">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
                                             <Setter Property="VerticalContentAlignment" Value="Top"/>
@@ -571,7 +585,7 @@
                                 </Border>
 
                                 <!-- CARD 3: Images & Logos (RESTORED!) -->
-                                <Border Background="#1C1E30" CornerRadius="10" Padding="15" Margin="0,0,0,15">
+                                <Border Background="#1C1E30" CornerRadius="10" Padding="15" Margin="0,0,0,15" AllowDrop="True" Drop="ImageCard_Drop" DragOver="ImageCard_DragOver">
                                     <StackPanel>
                                         <TextBlock Text="Images &amp; Logos" Foreground="#6C5DD3" FontWeight="Bold" FontSize="16" Margin="0,0,0,15"/>
                                         <Grid Margin="0,0,0,10">
@@ -635,7 +649,6 @@
 
                                 <!-- Live Controls -->
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,15">
-                                    <Button Content="📺 OPEN LIVE DISPLAY" Height="35" Width="180" Background="#FF9F43" Foreground="Black" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnOpenLive_Click"/>
                                     <Button Content="🟩 GREEN SCREEN" Height="35" Width="140" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnGreenScreen_Click"/>
                                     <Button Content="✕ CLOSE" Height="35" Width="100" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnCloseLive_Click"/>
                                 </StackPanel>
@@ -702,7 +715,7 @@
                                 <TextBox x:Name="EventSearchBox" Width="130" Height="35" Background="#1C1E30" Foreground="White" BorderThickness="1,1,0,1" BorderBrush="#6C5DD3" Padding="10,0" VerticalContentAlignment="Center" CaretBrush="White" KeyDown="EventSearchBox_KeyDown"/>
                                 <Button Content="Search" Width="60" Height="35" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Cursor="Hand" BorderThickness="0" Click="BtnEventSearch_Click"/>
                                 <Button Content="↩ UNDO SAVE" Width="100" Height="35" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" BorderThickness="0" Margin="10,0,0,0" Click="BtnUndoEventSave_Click"/>
-                                <Border Background="#1C1E30" CornerRadius="8" Padding="10,5">
+                                <Border Background="#1C1E30" CornerRadius="8" Padding="10,5" Margin="10,0,0,0">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Custom Fonts:" Foreground="#E91E63" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                         <Button Content="Change Title Font" Height="25" Padding="10,0" Background="#2D3047" Foreground="White" Cursor="Hand" Margin="0,0,5,0" Click="BtnUploadTitleFont_Click"/>
@@ -721,7 +734,6 @@
                                     </StackPanel>
                                 </Border>
 
-                                <Button Content="📺 OPEN LIVE DISPLAY" Height="35" Padding="15,0" Background="#FF9F43" Foreground="Black" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnOpenLive_Click"/>
                                 <Button Content="🟩 GREEN SCREEN" Height="35" Padding="15,0" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand" Click="BtnGreenScreen_Click"/>
                                 <Button Content="✕ CLOSE" Height="35" Padding="15,0" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnCloseLive_Click"/>
                             </StackPanel>
@@ -739,13 +751,31 @@
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Manual Add Bar -->
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <TextBlock Grid.Row="0" Text="🎂 Birthdays (Double-click to edit!)" Foreground="#00E5FF" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,15"/>
 
-                                    <!-- FIX: DataGrid allows you to instantly edit names/dates to fix typos! -->
-                                    <DataGrid x:Name="GridBdays" Grid.Row="1" SelectionChanged="GridBdays_SelectionChanged" AutoGenerateColumns="False" Background="#0F111A" Foreground="Black" RowBackground="White" AlternatingRowBackground="#F0F0F0" HeadersVisibility="Column" CanUserAddRows="True" Margin="0,0,0,15">
+                                    <!-- RESTORED: Manual Entry Bar with Date Picker Trigger! -->
+                                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="60"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="#0F111A" CornerRadius="5" Margin="0,0,5,0">
+                                            <TextBox x:Name="TxtBdayName" Background="Transparent" Foreground="White" BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center" FontSize="14"/>
+                                        </Border>
+                                        <Border Grid.Column="1" Background="#0F111A" CornerRadius="5" Margin="0,0,5,0">
+                                            <TextBox x:Name="TxtBdayDate" Background="Transparent" Foreground="White" BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center" FontSize="14" IsReadOnly="True" Cursor="Hand" PreviewMouseDown="TxtBdayDate_PreviewMouseDown" Text="Date..."/>
+                                        </Border>
+                                        <Button Grid.Column="2" Content="➕ ADD" Background="#2D3047" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnAddBday_Click"/>
+                                    </Grid>
+
+                                    <!-- The DataGrid -->
+                                    <DataGrid x:Name="GridBdays" Grid.Row="2" SelectionChanged="GridBdays_SelectionChanged" AutoGenerateColumns="False" Background="#0F111A" Foreground="Black" RowBackground="White" AlternatingRowBackground="#F0F0F0" HeadersVisibility="Column" CanUserAddRows="False" Margin="0,0,0,15">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
                                             <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="120"/>
@@ -775,12 +805,31 @@
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Manual Add Bar -->
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <TextBlock Grid.Row="0" Text="💍 Anniversaries (Double-click to edit!)" Foreground="#E91E63" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,15"/>
 
-                                    <DataGrid x:Name="GridAnnivs" Grid.Row="1" SelectionChanged="GridAnnivs_SelectionChanged" AutoGenerateColumns="False" Background="#0F111A" Foreground="Black" RowBackground="White" AlternatingRowBackground="#F0F0F0" HeadersVisibility="Column" CanUserAddRows="True" Margin="0,0,0,15">
+                                    <!-- RESTORED: Manual Entry Bar with Date Picker Trigger! -->
+                                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="60"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="#0F111A" CornerRadius="5" Margin="0,0,5,0">
+                                            <TextBox x:Name="TxtAnnivName" Background="Transparent" Foreground="White" BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center" FontSize="14"/>
+                                        </Border>
+                                        <Border Grid.Column="1" Background="#0F111A" CornerRadius="5" Margin="0,0,5,0">
+                                            <TextBox x:Name="TxtAnnivDate" Background="Transparent" Foreground="White" BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center" FontSize="14" IsReadOnly="True" Cursor="Hand" PreviewMouseDown="TxtAnnivDate_PreviewMouseDown" Text="Date..."/>
+                                        </Border>
+                                        <Button Grid.Column="2" Content="➕ ADD" Background="#2D3047" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnAddAnniv_Click"/>
+                                    </Grid>
+
+                                    <!-- The DataGrid -->
+                                    <DataGrid x:Name="GridAnnivs" Grid.Row="2" SelectionChanged="GridAnnivs_SelectionChanged" AutoGenerateColumns="False" Background="#0F111A" Foreground="Black" RowBackground="White" AlternatingRowBackground="#F0F0F0" HeadersVisibility="Column" CanUserAddRows="False" Margin="0,0,0,15">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Couple Names" Binding="{Binding Name}" Width="*"/>
                                             <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="120"/>
@@ -807,7 +856,7 @@
                         </Grid>
                     </Grid>
                     <!-- ======================================================= -->
-                    <!-- SETTINGS DASHBOARD -->
+                    <!-- GLOBAL SETTINGS DASHBOARD -->
                     <!-- ======================================================= -->
                     <Grid x:Name="SettingsDashboard" Visibility="Collapsed">
                         <Border Background="#1C1E30" CornerRadius="10" Padding="40" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -816,25 +865,26 @@
                                 <TextBlock Text="Configure global app behaviors and default media." Foreground="LightGray" FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,30"/>
 
                                 <Grid>
+                                    <!-- FIX: Explicitly defines all 5 columns so the compiler builds them perfectly! -->
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="320"/>
+                                        <ColumnDefinition Width="20"/>
                                         <ColumnDefinition Width="320"/>
                                         <ColumnDefinition Width="20"/>
                                         <ColumnDefinition Width="320"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- LEFT COLUMN: Media Defaults -->
+                                    <!-- COLUMN 1: Backgrounds & Themes -->
                                     <StackPanel Grid.Column="0">
-                                        <!-- Theme Loop Video -->
                                         <Border Background="#0F111A" CornerRadius="10" Padding="20" Margin="0,0,0,15">
                                             <StackPanel>
-                                                <TextBlock Text="Default Theme Loop (MP4)" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                                <TextBlock Text="Default Background Theme Loop" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
                                                 <TextBlock Text="This video plays silently on a continuous loop on the Live Display." Foreground="Gray" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
                                                 <Button Content="📂 Upload Theme Video" Height="35" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnUploadThemeVideo_Click" Margin="0,0,0,10"/>
                                                 <Button Content="❌ Restore Black Screen" Height="35" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnRestoreBlackTheme_Click"/>
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Bible Background Gallery -->
                                         <Border Background="#0F111A" CornerRadius="10" Padding="20">
                                             <StackPanel>
                                                 <TextBlock Text="Bible Background Gallery" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
@@ -847,7 +897,7 @@
                                                     <Button Grid.Column="0" Content="🖼️ Add Image" Height="30" Background="#2D3047" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnAddBibleBg_Click"/>
                                                     <Button Grid.Column="2" Content="⬛ Solid Black" Height="30" Background="#FF4757" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnClearBibleBg_Click"/>
                                                 </Grid>
-                                                <ListBox x:Name="BgGalleryList" Height="90" Background="#1C1E30" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled" SelectionChanged="BgGalleryList_SelectionChanged" Margin="0,0,0,15">
+                                                <ListBox x:Name="BgGalleryList" Height="70" Background="#1C1E30" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled" SelectionChanged="BgGalleryList_SelectionChanged">
                                                     <ListBox.ItemsPanel>
                                                         <ItemsPanelTemplate>
                                                             <VirtualizingStackPanel Orientation="Horizontal"/>
@@ -855,11 +905,9 @@
                                                     </ListBox.ItemsPanel>
                                                     <ListBox.ItemTemplate>
                                                         <DataTemplate>
-                                                            <!-- FIX: Border is now permanently bound! C# just tells it what color to be! -->
                                                             <Border BorderThickness="3" CornerRadius="5" Margin="0,0,10,0" BorderBrush="{Binding BorderColor}">
                                                                 <Grid>
-                                                                    <!-- FIX: Bind to ImageSource so it uses the unlocked RAM copy! -->
-                                                                    <Image Source="{Binding ImageSource}" Width="100" Height="60" Stretch="UniformToFill" Cursor="Hand"/>
+                                                                    <Image Source="{Binding ImageSource}" Width="90" Height="50" Stretch="UniformToFill" Cursor="Hand"/>
                                                                     <Button Content="✕" Width="20" Height="20" Background="Red" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0" FontSize="10" Cursor="Hand" Click="BtnDeleteBibleBg_Click" Tag="{Binding FilePath}"/>
                                                                 </Grid>
                                                             </Border>
@@ -870,32 +918,106 @@
                                         </Border>
                                     </StackPanel>
 
-                                    <!-- RIGHT COLUMN: Gradients & Sensitivity -->
-                                    <Border Grid.Column="2" Background="#0F111A" CornerRadius="10" Padding="20" VerticalAlignment="Top">
-                                        <StackPanel>
-                                            <TextBlock Text="Presentation Mode Gradient" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-                                            <Grid Margin="0,0,0,15">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition/>
-                                                    <ColumnDefinition/>
-                                                </Grid.ColumnDefinitions>
-                                                <Button x:Name="BtnGrad1" Grid.Column="0" Content="Pick Color 1" Height="35" Background="#0f2027" Foreground="White" Margin="0,0,5,0" Cursor="Hand" Click="BtnPickGrad1_Click" BorderThickness="1" BorderBrush="White"/>
-                                                <Button x:Name="BtnGrad2" Grid.Column="1" Content="Pick Color 2" Height="35" Background="#2c5364" Foreground="White" Margin="5,0,0,0" Cursor="Hand" Click="BtnPickGrad2_Click" BorderThickness="1" BorderBrush="White"/>
-                                            </Grid>
-                                            <Button Content="💾 SAVE GRADIENT" Height="30" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,0,0,25" Cursor="Hand" Click="BtnSaveGradient_Click"/>
+                                    <!-- COLUMN 2: Fonts & Animations -->
+                                    <StackPanel Grid.Column="2">
+                                        <Border Background="#0F111A" CornerRadius="10" Padding="20" Margin="0,0,0,15">
+                                            <StackPanel>
+                                                <TextBlock Text="Bible Reference Font Size" Foreground="White" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                                    <Slider x:Name="BibleRefSizeSlider" ValueChanged="BibleRefSizeSlider_ValueChanged" Width="200" Minimum="2" Maximum="10" Value="4" TickFrequency="0.5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                                    <TextBlock x:Name="LblRefSizeVal" Text="4.0 vh" Foreground="LightGray" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                </StackPanel>
 
-                                            <TextBlock Text="Bible Chapter Scroll Sensitivity" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-                                            <Slider x:Name="BibleScrollSensitivity" Minimum="1" Maximum="100" Value="20" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,0,0,0"/>
-                                        </StackPanel>
-                                    </Border>
+                                                <TextBlock Text="Live Display Animations" Foreground="#6C5DD3" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                                <CheckBox x:Name="chkAnimBible" Content="Enable Bible Verse Fades" Foreground="White" IsChecked="True" Margin="0,0,0,5"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                    <TextBlock Text="Fade Speed (ms):" Foreground="LightGray" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <Slider x:Name="BibleAnimSpeed" Width="100" Minimum="100" Maximum="2000" Value="400" TickFrequency="100" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                                </StackPanel>
+
+                                                <CheckBox x:Name="chkAnimSong" Content="Enable Presentation Gradients/Fades" Foreground="White" IsChecked="True" Margin="0,0,0,5"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                                    <TextBlock Text="Fade Speed (ms):" Foreground="LightGray" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <Slider x:Name="SongAnimSpeed" Width="100" Minimum="100" Maximum="2000" Value="500" TickFrequency="100" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                                </StackPanel>
+
+                                                <Button Content="💾 SAVE SETTINGS" Height="30" Background="#00B478" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnSaveSettings_Click"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- COLUMN 3: Gradients & Cloud Sync -->
+                                    <StackPanel Grid.Column="4">
+                                        <Border Background="#0F111A" CornerRadius="10" Padding="20" Margin="0,0,0,15">
+                                            <StackPanel>
+                                                <TextBlock Text="Presentation Mode Gradient" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                                <Grid Margin="0,0,0,15">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition/>
+                                                        <ColumnDefinition/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Button x:Name="BtnGrad1" Grid.Column="0" Content="Pick Color 1" Height="35" Background="#0f2027" Foreground="White" Margin="0,0,5,0" Cursor="Hand" Click="BtnPickGrad1_Click" BorderThickness="1" BorderBrush="White"/>
+                                                    <Button x:Name="BtnGrad2" Grid.Column="1" Content="Pick Color 2" Height="35" Background="#2c5364" Foreground="White" Margin="5,0,0,0" Cursor="Hand" Click="BtnPickGrad2_Click" BorderThickness="1" BorderBrush="White"/>
+                                                </Grid>
+                                                <Button Content="💾 SAVE GRADIENT" Height="30" Background="#00B478" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnSaveGradient_Click"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <!-- NEW: Safe Database Cleaner -->
+                                        <Border Background="#0F111A" CornerRadius="10" Padding="20">
+                                            <StackPanel>
+                                                <TextBlock Text="Database Maintenance" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                                                <TextBlock Text="Safely cleans up your hard drive by scanning for and deleting any empty or broken ghost files." Foreground="Gray" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
+                                                <Button Content="🧹 PURGE EMPTY FILES" Height="30" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnPurgeEmptySongs_Click"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        
+                                    </StackPanel>
+
                                 </Grid>
                             </StackPanel>
                         </Border>
                     </Grid>
-
                 </Grid>
             </Border>
+            <!-- NEW: The Custom Day/Month Picker Popup! -->
+            <Popup x:Name="DateSelectorPopup" StaysOpen="False" Placement="MousePoint" AllowsTransparency="True">
+                <Border Background="#1C1E30" BorderBrush="#6C5DD3" BorderThickness="2" CornerRadius="10" Padding="15" Width="250">
+                    <StackPanel>
+                        <TextBlock Text="Select Date" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Day" Foreground="LightGray" FontSize="12" HorizontalAlignment="Center"/>
+                                <ListBox x:Name="ListDays" Height="150" Background="#0F111A" Foreground="White" BorderThickness="0" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionChanged="DateList_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                            <Setter Property="Padding" Value="5"/>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                </ListBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Month" Foreground="LightGray" FontSize="12" HorizontalAlignment="Center"/>
+                                <ListBox x:Name="ListMonths" Height="150" Background="#0F111A" Foreground="White" BorderThickness="0" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionChanged="DateList_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                            <Setter Property="Padding" Value="5"/>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                </ListBox>
+                            </StackPanel>
+                        </Grid>
+                        <Button Content="✔ APPLY DATE" Height="30" Background="#00B478" Foreground="White" FontWeight="Bold" Margin="0,15,0,0" Cursor="Hand" Click="BtnApplyDate_Click"/>
+                    </StackPanel>
+                </Border>
+            </Popup>
         </Grid>
-        
     </Border>
 </Window>

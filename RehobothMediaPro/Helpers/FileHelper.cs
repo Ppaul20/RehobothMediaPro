@@ -9,7 +9,7 @@ namespace RehobothMediaPro.Helpers
 {
     public class FileHelper
     {
-        // This smart method guarantees we always find the CSS, Images, and HTML
+        // 1. Core App Directory (For HTML templates and CSS)
         public static string GetAppFolder()
         {
             return AppDomain.CurrentDomain.BaseDirectory;
@@ -20,6 +20,19 @@ namespace RehobothMediaPro.Helpers
         private readonly string fileLocationSong = Path.Combine(dirPath, @"WebTemplate\SongDataBase\");
         private readonly string LiveSongHtml = Path.Combine(dirPath, @"WebTemplate\SongLive.html");
 
+        // FIX: Restored the core HTML saver method!
+        public void CreateFile(string fileName, string songTemplate, string type)
+        {
+            using (FileStream fs = new FileStream($"{fileLocation}{fileName}.{type}", FileMode.Create))
+            {
+                using (StreamWriter w = new StreamWriter(fs, Encoding.UTF8))
+                {
+                    w.WriteLine(songTemplate);
+                }
+            }
+        }
+
+        // FIX: Restored the missing SaveasHtmlForSong method!
         public void SaveasHtmlForSong(string templateName, HtmlModel content)
         {
             string baseDir = GetAppFolder();
@@ -28,53 +41,72 @@ namespace RehobothMediaPro.Helpers
             if (File.Exists(fileName))
             {
                 string songTemplate = File.ReadAllText(fileName);
-
                 if (!string.IsNullOrEmpty(songTemplate))
                 {
                     songTemplate = songTemplate.Replace("{{Lyrics}}", content.Lyrics ?? "");
                     songTemplate = songTemplate.Replace("{{Header}}", content.Header ?? "");
                     songTemplate = songTemplate.Replace("{{FontSize}}", content.FontSize ?? "35px");
-
                     CreateFile("SongLive", songTemplate, "html");
                 }
             }
         }
-        // NEW: Generates the Full Paragraph for the Presentation Screen!
-        // FIX: Beautiful full-screen Gradient Background for Presentation Mode!
-        // FIX: Aggressive CSS injection guarantees your Custom Gradient appears!
-        // FIX: Now accepts templateFile so we can route it to SongLive or SongPresentation!
-        public void SaveasHtmlForPresentation(HtmlModel content, string grad1, string grad2, string templateFile = "SongPresentation")
+        public void SaveasHtmlForPresentation(HtmlModel content, string grad1, string grad2, string templateFile = "SongPresentation", bool enableAnim = true, int animSpeedMs = 500)
         {
             string baseDir = GetAppFolder();
-
             string finalLyrics = content.Lyrics ?? "";
 
-            string html = $@"<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8' />
-    <style>
-        body {{ 
-            margin: 0; padding: 5vw; overflow: hidden; box-sizing: border-box; 
-            background: linear-gradient(135deg, {grad1}, {grad2}); 
-            display: flex; align-items: center; justify-content: center; height: 100vh; 
+            // Failsafe: if the size is missing, default it to a large 80px!
+            string fontSize = string.IsNullOrWhiteSpace(content.FontSize) ? "80px" : content.FontSize;
+
+            string speedStr = (animSpeedMs / 1000.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string animCss = enableAnim ? $"transition: opacity {speedStr}s ease-in-out, transform {speedStr}s ease-in-out;" : "";
+
+            string html = $@"<!DOCTYPE html><html><head><meta charset='utf-8' /><style>
+        @font-face {{ font-family: 'BalooThambi'; src: url('BalooThambi.ttf') format('truetype'); }}
+
+        body::before {{ content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: linear-gradient(135deg, {grad1}, {grad2}); }}
+        body {{ margin: 0; padding: 5vw; overflow: hidden; box-sizing: border-box; display: flex; align-items: center; justify-content: center; height: 100vh; background: transparent; }}
+        
+        #lyricsWrapper {{ width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; opacity: 0; transform: scale(0.95); {animCss} }}
+        
+        /* FIX: Pure white text, heavy shadow, raw font size! */
+        .lyrics {{ 
+            font-family: 'BalooThambi', 'Nirmala UI', 'Segoe UI', Arial, sans-serif; font-weight: 900; 
+            color: white; /* Forced White */
+            text-align: center; line-height: 1.6; 
+            font-size: {fontSize}; /* Uses raw input */
+            text-shadow: 3px 5px 15px rgba(0,0,0,0.8); 
         }}
-        .lyrics {{
-            font-family: 'Segoe UI', Arial, sans-serif;
-            font-weight: 900; color: white;
-            text-align: center; font-size: 7.5vh; line-height: 1.6;
-            text-shadow: 3px 5px 15px rgba(0,0,0,0.6);
-            animation: fadeIn 0.5s ease-in-out;
-        }}
-        @keyframes fadeIn {{ from {{ opacity: 0; transform: scale(0.95); }} to {{ opacity: 1; transform: scale(1); }} }}
-    </style>
-</head>
-<body>
-    <div class='lyrics'>
-        {finalLyrics}
+    </style></head><body>
+    
+    <div id='lyricsWrapper'>
+        <div class='lyrics' id='lyricsText'>{finalLyrics}</div>
     </div>
-</body>
-</html>";
+    
+    <script>
+        // FIX: The Javascript now accepts the new font size and physically applies it to the text!
+        function updateLyrics(newText, animEnabled, speedMs, newFontSize) {{
+            let wrapper = document.getElementById('lyricsWrapper');
+            let textNode = document.getElementById('lyricsText');
+
+            if (animEnabled) {{ wrapper.style.opacity = '0'; wrapper.style.transform = 'scale(0.95)'; }}
+            
+            setTimeout(() => {{
+                textNode.innerHTML = newText;
+                textNode.style.fontSize = newFontSize; // Applies the new size instantly!
+                
+                if (animEnabled) {{ wrapper.style.opacity = '1'; wrapper.style.transform = 'scale(1)'; }}
+            }}, (animEnabled ? speedMs : 10)); 
+        }}
+
+        window.onload = () => {{
+            setTimeout(() => {{ 
+                let w = document.getElementById('lyricsWrapper');
+                w.style.opacity = '1'; w.style.transform = 'scale(1)';
+            }}, 50); 
+        }};
+    </script>
+</body></html>";
 
             CreateFile(templateFile, html, "html");
         }
@@ -142,16 +174,101 @@ namespace RehobothMediaPro.Helpers
             CreateFile("SongLive", songTemplate, "html");
         }
 
+        // FIX: Enforces 'object-fit' so Portrait and Landscape images never stretch or distort!
         public void SaveasHtmlForLowerThird(HtmlModel content, string templateName)
         {
-            var fileName = Path.Combine(dirPath, $@"WebTemplate\{templateName}.html");
-            string songTemplate = File.ReadAllText($"{fileName}");
-            content.Lyrics = content.Lyrics.Replace("<br>", "");
-            songTemplate = songTemplate.Replace("{{Lyrics}}", content.Lyrics);
-            songTemplate = songTemplate.Replace("{{Header}}", content.Header);
-            songTemplate = songTemplate.Replace("{{FontSize}}", content.FontSize);
+            string baseDir = GetAppFolder();
 
-            CreateFile("SongLive", songTemplate, "html");
+            // We build the HTML directly so we have total control over the image stretching!
+            string html = "";
+
+            if (templateName == "PotraitImage")
+            {
+                // FIX: Portrait Mode (Fits the height perfectly, leaves black bars on the sides)
+                html = $@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <style>
+        body {{ margin: 0; padding: 0; background-color: #000000; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; }}
+        img {{ max-width: 100vw; max-height: 100vh; object-fit: contain; }}
+    </style>
+</head>
+<body>
+    <img src='images/{content.Lyrics}' />
+</body>
+</html>";
+            }
+            else if (templateName == "Transprentlogo")
+            {
+                // Landscape / Logo Mode (Fills the screen)
+                html = $@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <style>
+        body {{ margin: 0; padding: 0; background-color: #000000; overflow: hidden; height: 100vh; }}
+        img {{ width: 100vw; height: 100vh; object-fit: contain; }}
+    </style>
+</head>
+<body>
+    <img src='images/{content.Lyrics}' />
+</body>
+</html>";
+            }
+            else if (templateName == "AnimatedVideoLibrary" || templateName == "LowerThirdVideoLibrary")
+            {
+                // Video Mode (Fills screen without stretching)
+                html = $@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <style>
+        body {{ margin: 0; padding: 0; background-color: #000000; overflow: hidden; height: 100vh; }}
+        video {{ width: 100vw; height: 100vh; object-fit: cover; }}
+    </style>
+</head>
+<body>
+    <video autoplay loop muted>
+        <source src='{(templateName == "AnimatedVideoLibrary" ? "AnimatedVideoLibrary" : "LowerThirdVideoLibrary")}/{content.Lyrics}' type='video/mp4'>
+    </video>
+</body>
+</html>";
+            }
+            else if (templateName == "VideoTemplate")
+            {
+                // Custom Video Uploads
+                html = $@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <style>
+        body {{ margin: 0; padding: 0; background-color: #000000; overflow: hidden; height: 100vh; }}
+        video {{ width: 100vw; height: 100vh; object-fit: cover; }}
+    </style>
+</head>
+<body>
+    <video autoplay loop muted>
+        <source src='Video/{content.Lyrics}' type='video/mp4'>
+    </video>
+</body>
+</html>";
+            }
+            else
+            {
+                // Fallback for old templates
+                string fileName = Path.Combine(baseDir, $@"WebTemplate\{templateName}.html");
+                if (File.Exists(fileName))
+                {
+                    string oldHtml = File.ReadAllText(fileName);
+                    oldHtml = oldHtml.Replace("{{Lyrics}}", content.Lyrics ?? "").Replace("{{Header}}", content.Header ?? "").Replace("{{FontSize}}", content.FontSize ?? "35px");
+                    CreateFile("SongLive", oldHtml, "html");
+                    return;
+                }
+            }
+
+            // Write the fixed HTML to the live file!
+            CreateFile("SongLive", html, "html");
         }
 
         public void SaveasHtmlForBibleHeader(HtmlModel content, string templateName)
@@ -163,17 +280,6 @@ namespace RehobothMediaPro.Helpers
             songTemplate = songTemplate.Replace("{{FontSize}}", content.FontSize);
 
             CreateFile("SongLive", songTemplate, "html");
-        }
-
-        public void CreateFile(string fileName, string songTemplate, string type)
-        {
-            using (FileStream fs = new FileStream($"{fileLocation}{fileName}.{type}", FileMode.Create))
-            {
-                using (StreamWriter w = new StreamWriter(fs, Encoding.UTF8))
-                {
-                    w.WriteLine(songTemplate);
-                }
-            }
         }
 
         // FIX: Accepts Custom Fonts, Colors, and Manual Size Adjustments!
@@ -198,107 +304,101 @@ namespace RehobothMediaPro.Helpers
         // FIX: Pure CSS Container Queries! No Javascript flashes, no chopped backgrounds!
         // RESTORED: True TextFit JS Engine + Fixed Unchopped Background + Locked Reference Size!
         // FIX: Invisible Barrier Blocks guarantee perfect spacing that the Javascript cannot ignore!
-        public void SaveasHtmlForVerseViewBible(string reference, List<string> verses, string bgImagePath, double sizeOffset, string vFont, string vColor, string rFont, bool priBold, bool secBold)
+        // FIX: The complete, error-free Bible HTML generator.
+        // FIX: Reverted to Segoe UI. Stopped the white flash by fading the container, not the body!
+        // FIX 3: Flash-Proof Scaling and Static Background!
+        // FIX: The True Static Broadcast Skeleton. NEVER reloads. Zero black flashes.
+        // FIX: Replaced buggy @keyframes with a rock-solid CSS Transition so the opacity never snaps to 0!
+        // FIX: Added 'int animSpeedMs' parameter
+        // FIX: The Flawless Tape Banner, Locked Background, and Safe CSS Decimals!
+        // FIX: Fully sanitized CSS to prevent Javascript interpreter crashes!
+        // FIX: Added 'int animSpeedMs = 400' to perfectly match the 11 arguments passed from C#!
+        // FINAL FIX: Permanent Background Layer, No Flashing, Flawless Crossfade!
+        public void SaveasHtmlForVerseViewBible(string reference, List<string> verses, string bgImagePath, double sizeOffset, string vFont, string vColor, string rFont, bool priBold, bool secBold, bool enableAnim = true, int animSpeedMs = 400)
         {
             string baseDir = GetAppFolder();
             string bgCss = string.IsNullOrEmpty(bgImagePath) ? "background-color: #000000;" : $"background-color: #000000; background-image: url('file:///{bgImagePath.Replace("\\", "/")}'); background-size: cover; background-position: center; background-repeat: no-repeat;";
+
+            string speedStr = (animSpeedMs / 1000.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string animCss = enableAnim ? $"transition: opacity {speedStr}s ease-in-out;" : "";
 
             string verseHtml = "";
             for (int i = 0; i < verses.Count; i++)
             {
                 if (!string.IsNullOrWhiteSpace(verses[i]))
                 {
-                    string fontWeight = (i == 0) ? (priBold ? "bold" : "normal") : (secBold ? "bold" : "normal");
-                    verseHtml += $"<div class='verse-block' style='font-weight: {fontWeight};'>{verses[i]}</div>";
-
-                    // Add an invisible spacer between languages (but not after the last one!)
-                    if (i < verses.Count - 1)
-                    {
-                        verseHtml += "<div class='spacer-middle'></div>";
-                    }
+                    string fw = (i == 0) ? (priBold ? "bold" : "normal") : (secBold ? "bold" : "normal");
+                    verseHtml += $"<div class='verse-block' style='font-weight: {fw};'>{verses[i]}</div>";
                 }
             }
 
-            string bibleTemplate = $@"<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8' />
-    <style>
-        body {{ margin: 0; padding: 0; overflow: hidden; box-sizing: border-box; {bgCss} display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 100vh; text-align: center; animation: fadeIn 0.4s ease-in-out; }}
-        @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
+            string safeVFont = vFont == "BalooThambi" ? "'BalooThambi', 'Segoe UI', sans-serif" : $"'{vFont}', sans-serif";
+            string safeRFont = rFont == "BalooThambi" ? "'BalooThambi', 'Arial', sans-serif" : $"'{rFont}', sans-serif";
+
+            string bibleTemplate = $@"<!DOCTYPE html><html><head><meta charset='utf-8' /><style>
+        @font-face {{ font-family: 'BalooThambi'; src: url('BalooThambi.ttf') format('truetype'); }}
+        
+        /* 1. This layer holds the background and NEVER fades or moves! */
+        .bg-layer {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; {bgCss} }}
+        
+        body {{ margin: 0; padding: 0; overflow: hidden; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 100vh; text-align: center; background: transparent; }}
+        
+        /* 2. This layer holds ONLY the text, and smoothly transitions its opacity! */
+        #fadeWrapper {{ width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; opacity: 0; {animCss} }}
         
         .reference-wrapper {{ position: absolute; top: 4vh; left: 50%; transform: translateX(-50%); display: inline-block; z-index: 10; }}
-        .reference-bg {{ background-color: white; border-radius: 5px 25px 5px 25px / 25px 5px 25px 5px; padding: 1.5vh 3vw; box-shadow: 2px 5px 15px rgba(0,0,0,0.5); max-width: 90vw; }}
-        .reference {{ color: black; font-family: '{rFont}', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; margin: 0; white-space: nowrap; font-size: 4.5vh; }}
+        .reference-bg {{ background-color: white; border-radius: 5px 25px 5px 25px / 25px 5px 25px 5px; padding: 2.0vh 3vw; box-shadow: 2px 5px 15px rgba(0,0,0,0.5); max-width: 90vw; }}
+        .reference {{ color: black; font-family: {safeRFont}; font-weight: 9000; text-transform: uppercase; letter-spacing: 2px; margin: 0; white-space: nowrap; font-size: clamp(18px, 4.5vw, 45px); }}
         
-        /* The container stretches to fill the screen */
-        .verses-container {{ 
-            width: 100vw; 
-            height: 100vh; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            box-sizing: border-box; 
-        }}
-        
-        /* THE PHYSICAL BARRIERS: Javascript is forced to measure these! */
-        .spacer-top {{ height: 16vh; width: 100%; flex-shrink: 0; }} /* Protects the banner */
-        .spacer-middle {{ height: 3vh; width: 100%; flex-shrink: 0; }} /* Separates languages */
-        .spacer-bottom {{ height: 6vh; width: 100%; flex-shrink: 0; }} /* Protects the floor */
-
-        /* Added 6vw side padding so the text never touches the left/right edges */
-        .verse-block {{ color: {vColor}; font-family: '{vFont}', sans-serif; text-shadow: 3px 3px 8px black; width: 96vw; padding: 0 2vw; box-sizing: border-box; line-height: 1.4; margin: 0; opacity: 0; }}
-    </style>
-</head>
-<body>
-    <div class='reference-wrapper'><div class='reference-bg'><p class='reference'>{reference}</p></div></div>
+        .bounding-box {{ position: absolute; top: 15vh; bottom: 4vh; left: 4vw; right: 4vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh; }}
+        .verse-block {{ color: {vColor}; font-family: {safeVFont}; text-shadow: 3px 3px 8px black; width: 100%; line-height: 1.4; margin: 0; font-size: 85px; }}
+    </style></head><body>
     
-    <div class='verses-container' id='vCont'>
-        <!-- The invisible barriers are physically built into the DOM! -->
-        <div class='spacer-top'></div>
-        {verseHtml}
-        <div class='spacer-bottom'></div>
+    <div class='bg-layer'></div>
+    
+    <div id='fadeWrapper'>
+        <div class='reference-wrapper'><div class='reference-bg'><p class='reference' id='refText'>{reference}</p></div></div>
+        <div class='bounding-box' id='bbox'>{verseHtml}</div>
     </div>
-
-    <!-- SCRIPT: Flawless JS Shrink-to-Fit Engine -->
+    
     <script>
-        function fitText() {{
-            let cont = document.getElementById('vCont');
-            let blocks = document.querySelectorAll('.verse-block');
-            
-            let currentSize = 100; // Start massively huge!
-            let minSize = 20;
-            let offset = {sizeOffset} * 5; 
-            
-            blocks.forEach(b => {{
-                b.style.fontSize = currentSize + 'px';
-                b.style.opacity = '1'; // Unhide
-            }});
-
-            // Shrink pixel-by-pixel until it fits! 
-            // Because the spacers are physical objects, the text HAS to shrink to make room for them!
+        function applyScaling(offset) {{
+            let bbox = document.getElementById('bbox'); let blocks = document.querySelectorAll('.verse-block');
+            let currentSize = 7.5; 
+            blocks.forEach(b => b.style.fontSize = currentSize + 'vh');
             let loops = 0;
-            while (cont.scrollHeight > window.innerHeight && currentSize > minSize && loops < 100) {{
-                currentSize -= 1;
-                blocks.forEach(b => b.style.fontSize = currentSize + 'px');
-                loops++;
-            }}
-
-            // Apply manual +/- offset
-            let finalSize = currentSize + offset;
-            blocks.forEach(b => b.style.fontSize = finalSize + 'px');
+            while (bbox.scrollHeight > bbox.clientHeight && currentSize > 2.0 && loops < 50) {{ currentSize -= 0.2; blocks.forEach(b => b.style.fontSize = currentSize + 'vh'); loops++; }}
+            let finalSize = currentSize + (offset * 0.5);
+            blocks.forEach(b => b.style.fontSize = finalSize + 'vh');
         }}
 
-        window.onload = fitText;
-        setTimeout(fitText, 50); 
+        function updateVerse(newRef, newHtml, offset, animEnabled, speedMs) {{
+            let wrapper = document.getElementById('fadeWrapper');
+            let ref = document.getElementById('refText');
+            let bbox = document.getElementById('bbox');
+
+            if (animEnabled) wrapper.style.opacity = '0'; // Fade out
+            
+            setTimeout(() => {{
+                ref.innerHTML = newRef;
+                bbox.innerHTML = newHtml;
+                applyScaling(offset);
+                if (animEnabled) wrapper.style.opacity = '1'; // Fade back in!
+            }}, (animEnabled ? speedMs : 10)); 
+        }}
+
+        // Instantly scales and fades in on the very first load
+        window.onload = () => {{ applyScaling({sizeOffset}); setTimeout(() => {{ document.getElementById('fadeWrapper').style.opacity = '1'; }}, 50); }}; 
     </script>
-</body>
-</html>";
+</body></html>";
 
             CreateFile("SongLive", bibleTemplate, "html");
         }
 
         public void CreateFileSong(string fileName, string songTemplate, string type)
         {
-            using (FileStream fs = new FileStream($"{fileLocationSong}{fileName}.{type}", FileMode.Create))
+            string finalPath = Path.Combine(fileLocationSong, $"{fileName}.{type}");
+            using (FileStream fs = new FileStream(finalPath, FileMode.Create))
             {
                 using (StreamWriter w = new StreamWriter(fs, Encoding.UTF8))
                 {
@@ -309,11 +409,8 @@ namespace RehobothMediaPro.Helpers
 
         public List<string> FiletoList(string filename)
         {
-            string baseDir = GetAppFolder();
-            string filePath = Path.Combine(baseDir, $@"WebTemplate\DropDownList\{filename}.txt");
-
-            if (!File.Exists(filePath))
-                return new List<string>();
+            string filePath = Path.Combine(dirPath, $@"WebTemplate\DropDownList\{filename}.txt");
+            if (!File.Exists(filePath)) return new List<string>();
 
             return File.ReadAllText(filePath).Replace("\r\n", "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
         }

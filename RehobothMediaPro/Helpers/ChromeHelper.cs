@@ -8,7 +8,45 @@ namespace RehobothMediaPro.Helpers
     {
         private static LiveDisplay liveDisplayForm = null;
         private static LiveDisplay presentationDisplayForm = null; // SECOND SCREEN!
+        public bool IsPresentationOpen()
+        {
+            return presentationDisplayForm != null && !presentationDisplayForm.IsDisposed;
+        }
 
+        // FIX: Forceful navigation. NEVER ignores your command!
+        // FIX: The Zero-Click Live Monitor! Automatically opens the Green Screen if it's closed!
+        public void NavigateLiveDisplay(string htmlFileName)
+        {
+            string baseDir = FileHelper.GetAppFolder();
+            string fileUri = new Uri(System.IO.Path.Combine(baseDir, $@"WebTemplate\{htmlFileName}.html")).AbsoluteUri;
+
+            if (liveDisplayForm == null || liveDisplayForm.IsDisposed)
+            {
+                liveDisplayForm = new LiveDisplay(fileUri, 1);
+                liveDisplayForm.Show();
+            }
+            else if (liveDisplayForm.webView != null && liveDisplayForm.webView.CoreWebView2 != null)
+            {
+                liveDisplayForm.webView.CoreWebView2.Navigate(fileUri);
+            }
+        }
+
+        // FIX: Automatically opens the Presentation Screen if it's closed!
+        public void NavigatePresentationDisplay(string htmlFileName)
+        {
+            string baseDir = FileHelper.GetAppFolder();
+            string fileUri = new Uri(System.IO.Path.Combine(baseDir, $@"WebTemplate\{htmlFileName}.html")).AbsoluteUri;
+
+            if (presentationDisplayForm == null || presentationDisplayForm.IsDisposed)
+            {
+                presentationDisplayForm = new LiveDisplay(fileUri, 2);
+                presentationDisplayForm.Show();
+            }
+            else if (presentationDisplayForm.webView != null && presentationDisplayForm.webView.CoreWebView2 != null)
+            {
+                presentationDisplayForm.webView.CoreWebView2.Navigate(fileUri);
+            }
+        }
         public void OpenChrome(bool useDualDisplay)
         {
             string baseDir = FileHelper.GetAppFolder();
@@ -41,7 +79,9 @@ namespace RehobothMediaPro.Helpers
 
         public void RefreshChrome()
         {
-            if (liveDisplayForm != null && !liveDisplayForm.IsDisposed) liveDisplayForm.RefreshBrowser();
+            if (liveDisplayForm == null || liveDisplayForm.IsDisposed) NavigateLiveDisplay("SongLive");
+            else liveDisplayForm.RefreshBrowser();
+
             if (presentationDisplayForm != null && !presentationDisplayForm.IsDisposed) presentationDisplayForm.RefreshBrowser();
         }
 
@@ -69,12 +109,24 @@ namespace RehobothMediaPro.Helpers
                 liveDisplayForm.webView.CoreWebView2.ExecuteScriptAsync(script);
             }
         }
+
+        // FIX: Broadcasts Javascript to BOTH screens so neither gets stuck!
         public void ExecuteJavascriptOnLive(string script)
         {
-            if (liveDisplayForm != null && !liveDisplayForm.IsDisposed && liveDisplayForm.webView != null && liveDisplayForm.webView.CoreWebView2 != null)
+            if (liveDisplayForm == null || liveDisplayForm.IsDisposed) NavigateLiveDisplay("SongLive");
+
+            if (liveDisplayForm != null && liveDisplayForm.webView != null && liveDisplayForm.webView.CoreWebView2 != null)
             {
                 liveDisplayForm.webView.CoreWebView2.ExecuteScriptAsync(script);
             }
+
+            if (presentationDisplayForm != null && !presentationDisplayForm.IsDisposed && presentationDisplayForm.webView != null && presentationDisplayForm.webView.CoreWebView2 != null)
+            {
+                presentationDisplayForm.webView.CoreWebView2.ExecuteScriptAsync(script);
+            }
         }
+        // Instantly forces the browser to load a specific local HTML file!
+
     }
+
 }
