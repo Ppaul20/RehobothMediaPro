@@ -347,7 +347,7 @@ namespace RehobothMediaPro.Helpers
         #fadeWrapper {{ width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; opacity: 0; {animCss} }}
         
         .reference-wrapper {{ position: absolute; top: 4vh; left: 50%; transform: translateX(-50%); display: inline-block; z-index: 10; }}
-        .reference-bg {{ background-color: white; border-radius: 5px 25px 5px 25px / 25px 5px 25px 5px; padding: 2.0vh 3vw; box-shadow: 2px 5px 15px rgba(0,0,0,0.5); max-width: 90vw; }}
+        .reference-bg {{ background-color: white; border-radius: 5px 25px 5px 25px / 25px 5px 25px 5px; padding: 1.2vh 2vw; box-shadow: 2px 5px 15px rgba(0,0,0,0.5); max-width: 90vw; }}
         .reference {{ color: black; font-family: {safeRFont}; font-weight: 9000; text-transform: uppercase; letter-spacing: 2px; margin: 0; white-space: nowrap; font-size: clamp(18px, 4.5vw, 45px); }}
         
         .bounding-box {{ position: absolute; top: 15vh; bottom: 4vh; left: 4vw; right: 4vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh; }}

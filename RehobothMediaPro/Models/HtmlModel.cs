@@ -6,14 +6,13 @@ using System.Threading.Tasks;
 
 namespace RehobothMediaPro.Models
 {
-   public class HtmlModel
+    public class HtmlModel
     {
-        public string Lyrics;
-
-        public string Header;
-
-        public string FontSize;
-
-        public bool isVerseAvailable = true;
+        public string Lyrics { get; set; }
+        // NEW: Stores the perfect full-paragraph HTML for the second monitor!
+        public string PresentationLyrics { get; set; }
+        public string Header { get; set; }
+        public string FontSize { get; set; }
+        public bool isVerseAvailable { get; set; } = true;
     }
 }

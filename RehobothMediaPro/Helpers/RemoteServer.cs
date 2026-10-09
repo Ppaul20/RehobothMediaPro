@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Input;
 
 namespace RehobothMediaPro.Helpers
 {
@@ -41,66 +42,44 @@ namespace RehobothMediaPro.Helpers
                 // FIX: 100% Non-Blocking Async Request. The phone gets the data instantly!
                 // FIX: Forceful File Reader with Diagnostic Output!
                 // FIX: Safely grabs the ACTUAL MainWindow, completely ignoring Visual Studio's hidden testing tools!
+                // FIX: Flawless PC-to-Phone Sync! The phone asks the PC to do the math and copies the EXACT text from the 42 buttons!
                 .WithAction("/api/loadsong", HttpVerbs.Get, async ctx =>
                 {
                     string songName = ctx.Request.QueryString["song"];
                     List<string> activeLyrics = new List<string>();
 
-                    if (string.IsNullOrEmpty(songName))
-                    {
-                        activeLyrics.Add("ERROR: Song name was empty.");
-                    }
-                    else
+                    if (!string.IsNullOrEmpty(songName))
                     {
                         try
                         {
-                            // 1. Tell PC to load it immediately
-                            Application.Current.Dispatcher.Invoke(() => OnSongSelected?.Invoke(songName));
-
-                            // 2. Read the file
-                            string fullPath = System.IO.Path.Combine(FileHelper.GetAppFolder(), $@"WebTemplate\SongDataBase\{songName}.txt");
-
-                            if (System.IO.File.Exists(fullPath))
+                            // Use InvokeAsync to prevent the server from hanging!
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                string rawText = System.IO.File.ReadAllText(fullPath).Replace("\r\n", "\n").Replace("\r", "\n");
-                                string[] stanzas = rawText.Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+                                // 1. Tell the PC to load the song, apply the checkboxes, and hit Submit!
+                                OnSongSelected?.Invoke(songName);
 
-                                // THE MAGIC FIX: We loop through ALL windows to find the specific Rehoboth Window!
-                                bool isPresMode = false;
-                                Application.Current.Dispatcher.Invoke(() =>
+                                // 2. Read the exact text physically sitting on the 42 PC buttons!
+                                foreach (Window window in Application.Current.Windows)
                                 {
-                                    foreach (Window window in Application.Current.Windows)
+                                    if (window is MainWindow mainWin && mainWin.SongLyricsbuttons != null)
                                     {
-                                        if (window is MainWindow mainWin)
+                                        foreach (var btn in mainWin.SongLyricsbuttons)
                                         {
-                                            isPresMode = mainWin.chkPresentation.IsChecked == true;
-                                            break;
+                                            if (btn.Visibility == Visibility.Visible && btn.Content is System.Windows.Controls.TextBlock tb)
+                                            {
+                                                // Grabs the clean text so the phone screen matches the PC screen 1-to-1!
+                                                activeLyrics.Add(System.Net.WebUtility.HtmlEncode(tb.Text));
+                                            }
                                         }
-                                    }
-                                });
-
-                                foreach (string stanza in stanzas)
-                                {
-                                    if (isPresMode) activeLyrics.Add(stanza.Trim());
-                                    else
-                                    {
-                                        string[] lines = stanza.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                                        foreach (string line in lines) activeLyrics.Add(line.Trim());
+                                        break;
                                     }
                                 }
-                            }
-                            else
-                            {
-                                activeLyrics.Add($"FILE NOT FOUND");
-                            }
+                            });
                         }
-                        catch (Exception ex)
-                        {
-                            activeLyrics.Add($"CRASH: {ex.Message}");
-                        }
+                        catch { }
                     }
 
-                    // Send the clean JSON payload!
+                    // 3. Send the perfect array back to the phone!
                     string json = JsonSerializer.Serialize(activeLyrics);
                     await ctx.SendStringAsync(json, "application/json", System.Text.Encoding.UTF8);
                 })
@@ -132,6 +111,36 @@ namespace RehobothMediaPro.Helpers
                     });
                     await ctx.SendStringAsync("OK", "text/plain", System.Text.Encoding.UTF8);
                 })
+                // NEW API: Toggles the 3 Dual-Language Checkboxes from the phone!
+                .WithAction("/action/togglelang", HttpVerbs.Get, async ctx =>
+                {
+                    string target = ctx.Request.QueryString["target"]; // "op", "multi", or "dual"
+                    string mode = ctx.Request.QueryString["mode"];     // "true" or "false"
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        foreach (Window window in Application.Current.Windows)
+                        {
+                            if (window is MainWindow mainWin)
+                            {
+                                bool isChecked = (mode == "true");
+
+                                // Physically flip the boxes on the PC!
+                                if (target == "op") mainWin.chkOperatorMode.IsChecked = isChecked;
+                                else if (target == "multi") mainWin.chkMultilingual.IsChecked = isChecked;
+                                else if (target == "dual") { mainWin.chkDualEditor.IsChecked = isChecked; mainWin.ChkDualEditor_Click(null, null); }
+
+                                // Force the PC to rebuild the 42 buttons with the new language rules!
+                                if (!string.IsNullOrEmpty(mainWin.LyricsInputBox.Text))
+                                {
+                                    mainWin.BtnSubmit_Click(null, null);
+                                }
+                                break;
+                            }
+                        }
+                    });
+                    await ctx.SendStringAsync("OK", "text/plain", System.Text.Encoding.UTF8);
+                })
                 // NEW API: Triggers the Green Screen Wipe!
                 .WithAction("/action/greenscreen", HttpVerbs.Get, async ctx =>
                 {
@@ -147,6 +156,65 @@ namespace RehobothMediaPro.Helpers
                             }
                         }
                     });
+                    await ctx.SendStringAsync("OK", "text/plain", System.Text.Encoding.UTF8);
+                })
+                // --- NEW API: BIBLE REMOTE CONTROLS ---
+                .WithAction("/api/biblesearch", HttpVerbs.Get, async ctx =>
+                {
+                    string query = ctx.Request.QueryString["q"];
+                    List<string> chapterList = new List<string>();
+
+                    if (!string.IsNullOrEmpty(query))
+                    {
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            foreach (Window window in Application.Current.Windows)
+                            {
+                                if (window is MainWindow mainWin)
+                                {
+                                    if (mainWin.BibleDashboard.Visibility != Visibility.Visible) mainWin.BtnNavBible_Click(null, null);
+                                    mainWin.BibleSearchBox.Text = query;
+                                    mainWin.BibleSearchBox_KeyDown(null, new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(mainWin), 0, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent });
+
+                                    // Rip the generated Chapter Preview list straight from the PC!
+                                    if (mainWin.ChapterVerseList.Items != null)
+                                    {
+                                        foreach (var item in mainWin.ChapterVerseList.Items)
+                                        {
+                                            if (item is MainWindow.VersePreviewItem vp) chapterList.Add(System.Net.WebUtility.HtmlEncode(vp.PrimaryText));
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        });
+                    }
+                    string json = JsonSerializer.Serialize(chapterList);
+                    await ctx.SendStringAsync(json, "application/json", System.Text.Encoding.UTF8);
+                })
+                .WithAction("/action/bibleprev", HttpVerbs.Get, async ctx =>
+                {
+                    Application.Current.Dispatcher.Invoke(() => { foreach (Window w in Application.Current.Windows) if (w is MainWindow m) { m.BtnPrevVerse_Click(null, null); break; } });
+                    await ctx.SendStringAsync("OK", "text/plain", System.Text.Encoding.UTF8);
+                })
+                .WithAction("/action/biblenext", HttpVerbs.Get, async ctx =>
+                {
+                    Application.Current.Dispatcher.Invoke(() => { foreach (Window w in Application.Current.Windows) if (w is MainWindow m) { m.BtnNextVerse_Click(null, null); break; } });
+                    await ctx.SendStringAsync("OK", "text/plain", System.Text.Encoding.UTF8);
+                })
+                .WithAction("/action/biblejump", HttpVerbs.Get, async ctx =>
+                {
+                    string idxStr = ctx.Request.QueryString["index"];
+                    if (int.TryParse(idxStr, out int idx))
+                    {
+                        Application.Current.Dispatcher.Invoke(() => {
+                            foreach (Window w in Application.Current.Windows) if (w is MainWindow m)
+                            {
+                                m.ChapterVerseList.SelectedIndex = idx;
+                                m.ChapterVerseList_SelectionChanged(null, null); break;
+                            }
+                        });
+                    }
                     await ctx.SendStringAsync("OK", "text/plain", System.Text.Encoding.UTF8);
                 })
 
@@ -258,6 +326,7 @@ namespace RehobothMediaPro.Helpers
         }
 
         // The True Mobile Web App (HTML/CSS/JS)
+        // The True Mobile Web App (HTML/CSS/JS)
         private static string GetHtmlInterface()
         {
             return @"
@@ -266,16 +335,23 @@ namespace RehobothMediaPro.Helpers
 <head>
     <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0'/>
     <style>
-        body { background-color: #0F111A; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        body { background-color: #0F111A; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; padding-bottom: 80px; display: flex; flex-direction: column; align-items: center; }
         h2 { color: #6C5DD3; margin-top: 0; }
         
-        input { width: 100%; max-width: 400px; padding: 15px; border-radius: 10px; border: none; background: #1C1E30; color: white; font-size: 16px; margin-bottom: 20px; font-weight: bold; box-sizing: border-box; }
+        .tab-view { width: 100%; max-width: 400px; display: none; flex-direction: column; align-items: center; }
+        .active-tab { display: flex; }
         
-        #songList { width: 100%; max-width: 400px; max-height: 200px; overflow-y: auto; background: #1C1E30; border-radius: 10px; display: none; margin-bottom: 20px; }
+        /* BOTTOM NAVIGATION BAR */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: #1C1E30; display: flex; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); z-index: 100; }
+        .nav-btn { flex: 1; background: transparent; color: gray; border: none; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .nav-btn.active { color: #00E5FF; border-top: 3px solid #00E5FF; background: rgba(0, 229, 255, 0.1); }
+
+        input { width: 100%; padding: 15px; border-radius: 10px; border: none; background: #1C1E30; color: white; font-size: 16px; margin-bottom: 20px; font-weight: bold; box-sizing: border-box; }
+        #songList { width: 100%; max-height: 200px; overflow-y: auto; background: #1C1E30; border-radius: 10px; display: none; margin-bottom: 20px; }
         .song-item { padding: 15px; border-bottom: 1px solid #2D3047; cursor: pointer; }
         .song-item:active { background: #6C5DD3; }
 
-        .switch-container { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 400px; background: #1C1E30; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-sizing: border-box; }
+        .switch-container { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; padding: 10px 0; box-sizing: border-box; }
         .switch-label { font-size: 16px; font-weight: bold; color: white; }
         .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -284,7 +360,7 @@ namespace RehobothMediaPro.Helpers
         input:checked + .slider { background-color: #6C5DD3; }
         input:checked + .slider:before { transform: translateX(22px); }
 
-        #lyricsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; margin-bottom: 50px; }
+        #lyricsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 20px; }
         .lyric-btn { background-color: #2D3047; color: white; border: none; border-radius: 10px; padding: 15px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: 0.1s; white-space: pre-wrap; word-break: break-word; }
         .lyric-btn:active { background-color: #00B478; transform: scale(0.95); }
         .lyric-btn-pres { grid-column: span 2; font-size: 16px; padding: 20px; background-color: #0085FF; } 
@@ -293,41 +369,125 @@ namespace RehobothMediaPro.Helpers
         .wipe-btn { width: 48%; padding: 15px; border-radius: 10px; font-weight: bold; border: none; color: white; cursor: pointer; transition: 0.1s; box-sizing: border-box; }
         .wipe-btn:active { transform: scale(0.95); }
 
-        #pasteArea { display: none; flex-direction: column; width: 100%; max-width: 400px; margin-bottom: 20px; }
+        #pasteArea { display: none; flex-direction: column; width: 100%; margin-bottom: 20px; }
         textarea { width: 100%; height: 150px; background: #1C1E30; color: white; font-family: 'Segoe UI', sans-serif; font-size: 14px; padding: 15px; border-radius: 10px; border: 1px solid #6C5DD3; resize: none; box-sizing: border-box; margin-bottom: 10px; }
         .toggle-btn { background: transparent; color: #00E5FF; border: none; font-size: 14px; cursor: pointer; margin-bottom: 20px; font-weight: bold; text-decoration: underline; }
+
+        /* BIBLE SPECIFIC CSS */
+        .bible-control-row { display: flex; width: 100%; gap: 10px; margin-bottom: 20px; }
+        .bible-btn { flex: 1; background: #2D3047; color: white; border: none; border-radius: 10px; padding: 15px; font-weight: bold; font-size: 16px; }
+        .bible-btn:active { background: #00B478; }
+        #chapterList { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .verse-item { background: #1C1E30; padding: 15px; border-radius: 10px; border-left: 4px solid #2D3047; color: white; font-size: 15px; cursor: pointer; }
+        .verse-item.active-verse { border-left-color: #6C5DD3; background: #2D3047; }
     </style>
 </head>
 <body>
-    <h2>Rehoboth Remote Pro</h2>
+    <h2>Rehoboth Remote</h2>
     
     <div style='display: flex; justify-content: space-between; width: 100%; max-width: 400px; margin-bottom: 20px;'>
         <button class='wipe-btn' style='background-color: #00B478;' onclick='fetch(""/action/greenscreen"")'>🟩 Green Screen</button>
         <button class='wipe-btn' style='background-color: #6C5DD3;' onclick='fetch(""/action/theme"")'>✨ Theme Loop</button>
     </div>
 
-    <input type='text' id='searchInput' placeholder='🔍 Search Songs...' onkeyup='filterSongs()'/>
-    <div id='songList'></div>
+    <!-- SONG DASHBOARD TAB -->
+    <div id='tabSongs' class='tab-view active-tab'>
+        <input type='text' id='searchInput' placeholder='🔍 Search Songs...' onkeyup='filterSongs()'/>
+        <div id='songList'></div>
 
-    <button class='toggle-btn' onclick='togglePasteBox()'>+ Paste New Song Lyrics</button>
-    <div id='pasteArea'>
-        <textarea id='lyricsInput' placeholder='Paste new lyrics here...'></textarea>
-        <!-- FIX: One single button to do it all! -->
-        <button class='wipe-btn' style='background-color: #6C5DD3; width: 100%;' onclick='submitPastedSong()'>🚀 SEND &amp; SUBMIT</button>
+        <button class='toggle-btn' onclick='togglePasteBox()'>+ Paste New Song Lyrics</button>
+        <div id='pasteArea'>
+            <textarea id='lyricsInput' placeholder='Paste Primary (Tamil) lyrics here...'></textarea>
+            <textarea id='secondaryLyricsInput' placeholder='Paste Secondary (Tanglish) lyrics here...' style='display: none;'></textarea>
+            <div style='display: flex; gap: 10px; width: 100%;'>
+                <button class='wipe-btn' style='background-color: #2D3047; flex-grow: 1;' onclick='sendLyricsToPC()'>1. Send to PC</button>
+                <button class='wipe-btn' style='background-color: #6C5DD3; flex-grow: 1;' onclick='submitOnPC()'>2. SUBMIT</button>
+            </div>
+        </div>
+
+        <div style='width: 100%; background: #1C1E30; border-radius: 10px; margin-bottom: 20px; padding: 5px 15px; box-sizing: border-box;'>
+            <div class='switch-container' style='border-bottom: 1px solid #2D3047;'>
+                <span class='switch-label'>Presentation Mode</span>
+                <label class='switch'><input type='checkbox' id='presToggle' onchange='togglePresMode()'><span class='slider'></span></label>
+            </div>
+            <div class='switch-container' style='border-bottom: 1px solid #2D3047;'>
+                <span class='switch-label' style='color: #00E5FF;'>Multilingual Live</span>
+                <label class='switch'><input type='checkbox' id='multiToggle' onchange='toggleLangMode(""multi"")'><span class='slider'></span></label>
+            </div>
+            <div class='switch-container' style='border-bottom: 1px solid #2D3047;'>
+                <span class='switch-label' style='color: #FF9F43;'>I Don't Read Tamil</span>
+                <label class='switch'><input type='checkbox' id='opToggle' onchange='toggleLangMode(""op"")'><span class='slider'></span></label>
+            </div>
+            <div class='switch-container'>
+                <span class='switch-label' style='color: #A0A5C0;'>Dual Editor</span>
+                <label class='switch'><input type='checkbox' id='dualToggle' onchange='toggleLangMode(""dual"")'><span class='slider'></span></label>
+            </div>
+        </div>
+
+        <h3 id='currentSongLabel' style='color: #00E5FF; display: none; width: 100%;'></h3>
+        <div id='lyricsGrid'></div>
     </div>
 
-    <div class='switch-container'>
-        <span class='switch-label'>Presentation Mode</span>
-        <label class='switch'>
-            <input type='checkbox' id='presToggle' onchange='toggleMode()'>
-            <span class='slider'></span>
-        </label>
+    <!-- BIBLE DASHBOARD TAB -->
+    <div id='tabBible' class='tab-view'>
+        <input type='text' id='bibleSearch' placeholder='🔍 Search Verses (e.g. Gen 1 1)' onkeypress='handleBibleSearch(event)'/>
+        
+        <div class='bible-control-row'>
+            <button class='bible-btn' onclick='fetch(""/action/bibleprev"")'>⬅️ PREV</button>
+            <button class='bible-btn' onclick='fetch(""/action/biblenext"")'>NEXT ➡️</button>
+        </div>
+
+        <div id='chapterList'></div>
     </div>
 
-    <h3 id='currentSongLabel' style='color: #00E5FF; display: none;'></h3>
-    <div id='lyricsGrid'></div>
+    <!-- BOTTOM NAVIGATION -->
+    <div class='bottom-nav'>
+        <button id='navSongs' class='nav-btn active' onclick='switchTab(""Songs"")'>🎵 SONGS</button>
+        <button id='navBible' class='nav-btn' onclick='switchTab(""Bible"")'>📖 BIBLE</button>
+    </div>
 
     <script>
+        // --- NAVIGATION ---
+        function switchTab(tab) {
+            document.getElementById('tabSongs').classList.remove('active-tab');
+            document.getElementById('tabBible').classList.remove('active-tab');
+            document.getElementById('navSongs').classList.remove('active');
+            document.getElementById('navBible').classList.remove('active');
+            
+            document.getElementById('tab' + tab).classList.add('active-tab');
+            document.getElementById('nav' + tab).classList.add('active');
+        }
+
+        // --- BIBLE SCRIPT ---
+        let currentBibleBtn = null;
+        async function handleBibleSearch(e) {
+            if (e.key === 'Enter') {
+                let query = document.getElementById('bibleSearch').value;
+                if (!query) return;
+                
+                let list = document.getElementById('chapterList');
+                list.innerHTML = '<p style=""color:gray;"">Loading chapter...</p>';
+                
+                let res = await fetch('/api/biblesearch?q=' + encodeURIComponent(query));
+                let verses = await res.json();
+                
+                list.innerHTML = '';
+                verses.forEach((v, index) => {
+                    let div = document.createElement('div');
+                    div.className = 'verse-item';
+                    div.innerHTML = v;
+                    div.onclick = () => {
+                        if (currentBibleBtn) currentBibleBtn.classList.remove('active-verse');
+                        div.classList.add('active-verse');
+                        currentBibleBtn = div;
+                        fetch('/action/biblejump?index=' + index);
+                    };
+                    list.appendChild(div);
+                });
+            }
+        }
+
+        // --- SONG SCRIPT ---
         let allSongs = [];
         let currentActiveBtn = null;
         let currentLoadedSong = '';
@@ -362,30 +522,36 @@ namespace RehobothMediaPro.Helpers
             box.style.display = box.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        // FIX: The unified Send & Submit engine!
         async function submitPastedSong() {
-            let text = document.getElementById('lyricsInput').value;
-            if (text.trim().length === 0) return;
-
-            // 1. Send text to PC
-            await fetch('/action/pastelyrics', { method: 'POST', body: text });
+            let primaryText = document.getElementById('lyricsInput').value;
+            let secondaryText = document.getElementById('secondaryLyricsInput').value;
+            let isDual = document.getElementById('dualToggle').checked;
             
-            // 2. Clear mobile UI
+            if (primaryText.trim().length === 0) return;
+            
+            let payload = primaryText;
+            if (isDual && secondaryText.trim().length > 0) {
+                payload += ""\n===TANGLISH===\n"" + secondaryText;
+            }
+
+            await fetch('/action/pastelyrics', { method: 'POST', body: payload });
+            
             document.getElementById('lyricsInput').value = '';
+            document.getElementById('secondaryLyricsInput').value = '';
             togglePasteBox();
             
-            // 3. Tell PC to hit Submit
+            submitOnPC();
+        }
+
+        async function submitOnPC() {
             await fetch('/action/submit');
-            
             currentLoadedSong = ''; 
             document.getElementById('songList').style.display = 'none';
             document.getElementById('currentSongLabel').innerText = 'Unsaved Song (Live)';
             document.getElementById('currentSongLabel').style.display = 'block';
-            
             let grid = document.getElementById('lyricsGrid');
             grid.innerHTML = ''; 
 
-            // 4. Wait for PC to build the buttons, then download them!
             setTimeout(async () => {
                 let res = await fetch('/api/current_lyrics');
                 let stanzas = await res.json();
@@ -394,29 +560,27 @@ namespace RehobothMediaPro.Helpers
             }, 500);
         }
 
-        // FIX: Flawlessly rebuilds the phone UI whether the song is saved OR unsaved!
-        async function toggleMode() {
+        async function togglePresMode() {
             let isPres = document.getElementById('presToggle').checked;
-            
-            // 1. Tell the PC to flip its checkbox and rebuild its internal 42 buttons
             await fetch('/action/togglepres?mode=' + isPres);
-            
-            // 2. Fetch the newly built buttons back to the phone!
             if (currentLoadedSong) {
-                // It's a saved song from the database
                 loadSong(currentLoadedSong); 
             } else {
-                // It's an unsaved pasted song. We just fetch the current raw memory array!
-                document.getElementById('lyricsGrid').innerHTML = ''; 
-
-                setTimeout(async () => {
-                    let res = await fetch('/api/current_lyrics');
-                    let stanzas = await res.json();
-                    let grid = document.getElementById('lyricsGrid');
-                    
-                    buildButtons(stanzas, isPres, grid);
-                }, 500); // 500ms delay gives the PC time to finish rebuilding the 42 buttons
+                submitOnPC();
             }
+        }
+
+        async function toggleLangMode(target) {
+            let isChecked = document.getElementById(target + 'Toggle').checked;
+            
+            if (target === 'dual') {
+                document.getElementById('secondaryLyricsInput').style.display = isChecked ? 'block' : 'none';
+            }
+
+            await fetch('/action/togglelang?target=' + target + '&mode=' + isChecked);
+            
+            if (currentLoadedSong) loadSong(currentLoadedSong); 
+            else submitOnPC();
         }
 
         async function loadSong(name) {
@@ -438,8 +602,6 @@ namespace RehobothMediaPro.Helpers
                 document.getElementById('currentSongLabel').innerText = 'Error loading song.';
             }
         }
-
-        // FIX: The Submit button now correctly asks for the newly generated lyrics from the PC!
 
         function buildButtons(stanzas, isPres, grid) {
             stanzas.forEach((stanza, index) => {

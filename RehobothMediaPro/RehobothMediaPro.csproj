@@ -8,8 +8,8 @@
     <UseWPF>true</UseWPF>
 	  <UseWindowsForms>true</UseWindowsForms>
 	  <ApplicationIcon>logo-without-live.ico</ApplicationIcon>
-	  <AssemblyVersion>1.4.1.0</AssemblyVersion>
-	  <FileVersion>1.4.1.0</FileVersion>
+	  <AssemblyVersion>1.4.5.0</AssemblyVersion>
+	  <FileVersion>1.4.5.0</FileVersion>
   </PropertyGroup>
 
 	<ItemGroup>
@@ -19,6 +19,7 @@
 		<PackageReference Include="ExcelDataReader.DataSet" Version="3.9.0" />
 		<PackageReference Include="HtmlAgilityPack" Version="1.13.0-beta1" />
 		<PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4071-prerelease" />
+		<PackageReference Include="QRCoder" Version="1.8.0" />
 		<PackageReference Include="System.Text.Encoding.CodePages" Version="11.0.0-preview.5.26302.115" />
 		<Content Include="WebTemplate\**">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

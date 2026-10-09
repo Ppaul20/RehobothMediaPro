@@ -12,7 +12,8 @@ using RehobothMediaPro.Helpers;
 using RehobothMediaPro.Models;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
-
+using Point = System.Windows.Point;
+using QRCoder;
 
 namespace RehobothMediaPro
 {
@@ -75,6 +76,7 @@ namespace RehobothMediaPro
             LoadLowerThirds(); // Populates Pastor Names and MP4 Lists!
             InitMiniMonitor();
             LoadDatePickerLists();
+            LoadBibleLanguageList(); // NEW: Populates the drag-and-drop language list!
 
 
             string animFile = System.IO.Path.Combine(FileHelper.GetAppFolder(), "anim_settings.txt");
@@ -165,51 +167,88 @@ namespace RehobothMediaPro
 
             FinalHtmlModels = new List<HtmlModel>();
 
-            // Hide all buttons first to clear the grid
             foreach (var btn in SongLyricsbuttons) btn.Visibility = Visibility.Hidden;
 
-            string cleanText = LyricsInputBox.Text.Replace("\r\n", "\n").Replace("\r", "\n");
-            string[] stanzas = cleanText.Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+            bool isPresMode = chkPresentation.IsChecked == true;
+            bool isOpMode = chkOperatorMode.IsChecked == true;
+            bool isMultiMode = chkMultilingual.IsChecked == true;
+            string fontSizePx = FontSizeBox.Text + "px";
+            templateName = isPresMode ? "song3" : "song";
+
+            // Split Primary (Tamil) and Secondary (Tanglish)
+            string[] priStanzas = LyricsInputBox.Text.Replace("\r\n", "\n").Replace("\r", "\n").Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+            string[] secStanzas = SecondaryLyricsBox.Text.Replace("\r\n", "\n").Replace("\r", "\n").Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
 
             int buttonIndex = 0;
             bool isBlue = true;
 
-            // Set the correct template for the Live Display
-            templateName = chkPresentation.IsChecked == true ? "song3" : "song";
-            string fontSizePx = FontSizeBox.Text + "px";
-
-            foreach (string stanza in stanzas)
+            for (int i = 0; i < priStanzas.Length; i++)
             {
-                // BULLETPROOF LIMIT: Automatically stops exactly when the grid is full!
                 if (buttonIndex >= SongLyricsbuttons.Count) break;
 
-                Brush baseColor = chkPresentation.IsChecked == true ?
+                System.Windows.Media.Brush baseColor = isPresMode ?
                     (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#6C5DD3") :
                     (isBlue ? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#0085FF") : (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#2D3047"));
 
-                if (chkPresentation.IsChecked == true)
+                string priStanza = priStanzas[i].Trim();
+                string secStanza = i < secStanzas.Length ? secStanzas[i].Trim() : "";
+
+                if (isPresMode)
                 {
-                    SetupLyricButton(buttonIndex, stanza.Trim(), baseColor);
-                    FinalHtmlModels.Add(new HtmlModel() { Lyrics = stanza.Trim().Replace("\n", "<br/>"), FontSize = fontSizePx });
+                    // PRESENTATION HTML BUILDER
+                    string btnText = (isOpMode && !string.IsNullOrWhiteSpace(secStanza)) ? secStanza : priStanza;
+                    string presHtml = priStanza.Replace("\n", "<br/>");
+
+                    if (isMultiMode && !string.IsNullOrWhiteSpace(secStanza))
+                        presHtml += $"<br/><span style='color:FFD700; font-size:0.5em;'>★</span><br/><span style='color:E5FF00; font-size:0.9em;'>{secStanza.Replace("\n", "<br/>")}</span>";
+
+                    SetupLyricButton(buttonIndex, btnText, baseColor);
+                    FinalHtmlModels.Add(new HtmlModel() { Lyrics = presHtml, PresentationLyrics = presHtml, FontSize = fontSizePx });
                     buttonIndex++;
                 }
                 else
                 {
-                    string[] lines = stanza.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (string line in lines)
-                    {
-                        // BULLETPROOF LIMIT: Checks again for multi-line songs!
-                        if (buttonIndex >= SongLyricsbuttons.Count) break;
+                    // GREEN SCREEN HTML BUILDER
+                    string[] priLines = priStanza.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    string[] secLines = secStanza.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
-                        SetupLyricButton(buttonIndex, line.Trim(), baseColor);
-                        FinalHtmlModels.Add(new HtmlModel() { Lyrics = line.Trim(), FontSize = fontSizePx });
+                    string presHtml = priStanza.Replace("\n", "<br/>");
+                    if (isMultiMode && !string.IsNullOrWhiteSpace(secStanza))
+                        presHtml += $"<br/><span style='color:FFD700; font-size:0.5em;'>★</span><br/><span style='color:E5FF00; font-size:0.9em;'>{secStanza.Replace("\n", "<br/>")}</span>";
+
+                    for (int l = 0; l < priLines.Length; l++)
+                    {
+                        if (buttonIndex >= SongLyricsbuttons.Count) break;
+                        string priLine = priLines[l].Trim();
+                        string secLine = l < secLines.Length ? secLines[l].Trim() : "";
+
+                        string btnText = (isOpMode && !string.IsNullOrWhiteSpace(secLine)) ? secLine : priLine;
+                        string gsHtml = priLine;
+                        if (isMultiMode && !string.IsNullOrWhiteSpace(secLine))
+                            gsHtml += $"<br/><span style='color:white; font-size:0.9em;'>{secLine}</span>";
+
+                        SetupLyricButton(buttonIndex, btnText, baseColor);
+                        FinalHtmlModels.Add(new HtmlModel() { Lyrics = gsHtml, PresentationLyrics = presHtml, FontSize = fontSizePx });
                         buttonIndex++;
                     }
                 }
                 isBlue = !isBlue;
             }
         }
-
+        public void ChkDualEditor_Click(object sender, RoutedEventArgs e)
+        {
+            if (chkDualEditor.IsChecked == true)
+            {
+                SecondaryEditorBorder.Visibility = Visibility.Visible;
+                SecEditorRowDef.Height = new GridLength(1, GridUnitType.Star); // Splits 50/50
+            }
+            else
+            {
+                SecondaryEditorBorder.Visibility = Visibility.Collapsed;
+                SecEditorRowDef.Height = new GridLength(0); // Hides it
+            }
+        }
+        private void ChkMode_Click(object sender, RoutedEventArgs e) { if (!string.IsNullOrEmpty(LyricsInputBox.Text)) BtnSubmit_Click(null, null); }
         private void SetupLyricButton(int index, string text, Brush bgColor)
         {
             Button btn = SongLyricsbuttons[index];
@@ -350,6 +389,16 @@ namespace RehobothMediaPro
         // FIX: Flawless Double-Shift, ESC wipe, and protected Dropdown Navigation!
         protected override void OnPreviewKeyDown(KeyEventArgs e)
         {
+            // ----------------------------------------------------------------
+            // GLOBAL DASHBOARD SHORTCUTS (F1 - F5)
+            // ----------------------------------------------------------------
+            if (e.Key == Key.F1) { BtnNavSongs_Click(null, null); e.Handled = true; return; }
+            if (e.Key == Key.F2) { BtnNavBible_Click(null, null); e.Handled = true; return; }
+            if (e.Key == Key.F3) { BtnNavLowerThird_Click(null, null); e.Handled = true; return; }
+            if (e.Key == Key.F4) { BtnNavBirthdays_Click(null, null); e.Handled = true; return; }
+            if (e.Key == Key.F5) { BtnNavSettings_Click(null, null); e.Handled = true; return; }
+
+            // 1. ESC KEY FIX: Wipes screen based on Dashboard and Presentation Mode!
             // 1. ESC KEY FIX: Wipes screen based exactly on Presentation Mode checkbox!
             // 1. ESC KEY FIX: Wipes screen based on Dashboard and Presentation Mode!
             if (e.Key == Key.Escape)
@@ -523,16 +572,12 @@ namespace RehobothMediaPro
 
             if (isPresMode)
             {
-                // --- PRESENTATION MODE ---
                 chromeHelper.NavigateLiveDisplay("SongPresentation");
                 if (chkDualDisplay.IsChecked == true) chromeHelper.NavigatePresentationDisplay("SongPresentation");
                 currentlyActiveScreen = "Presentation";
 
-                string cleanLine = FinalHtmlModels[songCounter].Lyrics.Replace("<br/>", "").Replace("</br>", "").Trim();
-                string[] stanzas = LyricsInputBox.Text.Replace("\r\n", "\n").Replace("\r", "\n").Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
-
-                string fullParagraph = cleanLine;
-                foreach (var stanza in stanzas) { if (stanza.Replace("\n", "").Replace(" ", "").Contains(cleanLine.Replace(" ", ""))) { fullParagraph = stanza.Trim().Replace("\n", "<br/>"); break; } }
+                // NEW: Flawless sync! Directly uses the pre-calculated paragraph we built in BtnSubmit! No searching needed!
+                string fullParagraph = FinalHtmlModels[songCounter].PresentationLyrics;
 
                 bool animEnabled = chkAnimSong.IsChecked == true;
                 int animSpeed = (int)SongAnimSpeed.Value;
@@ -541,27 +586,22 @@ namespace RehobothMediaPro
                 string gradFile = System.IO.Path.Combine(FileHelper.GetAppFolder(), "gradient_memory.txt");
                 if (System.IO.File.Exists(gradFile)) { string[] parts = System.IO.File.ReadAllText(gradFile).Split('|'); if (parts.Length == 2) { g1 = parts[0]; g2 = parts[1]; } }
 
-                fileHelper.SaveasHtmlForPresentation(new HtmlModel() { Lyrics = fullParagraph.TrimEnd('<', 'b', 'r', '/', '>'), FontSize = fontSizeStr + "px" }, g1, g2, "SongPresentation", animEnabled, animSpeed);
+                fileHelper.SaveasHtmlForPresentation(new HtmlModel() { Lyrics = fullParagraph, FontSize = fontSizeStr + "px" }, g1, g2, "SongPresentation", animEnabled, animSpeed);
 
-                string jsLyrics = fullParagraph.TrimEnd('<', 'b', 'r', '/', '>').Replace("\r", "").Replace("\n", "").Replace("'", "\\'");
+                string jsLyrics = fullParagraph.Replace("\r", "").Replace("\n", "").Replace("'", "\\'");
                 string jsAnim = animEnabled ? "true" : "false";
 
                 chromeHelper.ExecuteJavascriptOnLive($"if(typeof updateLyrics === 'function') {{ updateLyrics('{jsLyrics}', {jsAnim}, {animSpeed}, '{fontSizeStr}px'); }} else {{ location.reload(); }}");
             }
             else
             {
-                // --- GREEN SCREEN MODE ---
                 currentlyActiveScreen = "Song";
-
-                // 1. Write the clean HTML file first!
                 fileHelper.SaveasHtmlForSong(templateName, FinalHtmlModels[songCounter]);
 
-                // 2. Force BOTH monitors to cleanly navigate to the Green Screen (This naturally refreshes the page!)
                 chromeHelper.NavigateLiveDisplay("SongLive");
                 if (chromeHelper.IsPresentationOpen()) chromeHelper.NavigatePresentationDisplay("SongLive");
             }
 
-            // Update the Green Box Highlight
             for (int i = 0; i < SongLyricsbuttons.Count; i++)
             {
                 if (SongLyricsbuttons[i].Visibility != Visibility.Visible) continue;
@@ -619,26 +659,33 @@ namespace RehobothMediaPro
                 {
                     string safeFileName = string.Join("_", songName.Split(System.IO.Path.GetInvalidFileNameChars())).Trim();
                     string baseDir = FileHelper.GetAppFolder();
-                    var listPath = System.IO.Path.Combine(FileHelper.GetAppFolder(), @"WebTemplate\DropDownList");
 
+                    // FIX: Rebuilds the entire list directly from the physical hard drive folder!
+                    // This guarantees we never lose a song, even if the memory file gets corrupted!
+                    string dbFolder = System.IO.Path.Combine(baseDir, @"WebTemplate\SongDataBase");
+                    if (!System.IO.Directory.Exists(dbFolder)) System.IO.Directory.CreateDirectory(dbFolder);
+
+                    // Actually write the new song to the hard drive FIRST
+                    string finalSaveContent = song;
+                    if (chkDualEditor.IsChecked == true && !string.IsNullOrWhiteSpace(SecondaryLyricsBox.Text))
+                        finalSaveContent += "\n===TANGLISH===\n" + SecondaryLyricsBox.Text;
+
+                    fileHelper.CreateFileSong(safeFileName, finalSaveContent, "txt");
+
+                    // Now scan the folder and rebuild the Master Memory List!
                     var nameList = new List<string>();
-                    if (System.IO.File.Exists(listPath))
+                    foreach (string file in System.IO.Directory.GetFiles(dbFolder, "*.txt"))
                     {
-                        nameList = System.IO.File.ReadAllText(listPath).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(n => n.Trim()).ToList();
+                        nameList.Add(System.IO.Path.GetFileNameWithoutExtension(file));
                     }
 
-                    if (!nameList.Any(n => n.Equals(safeFileName, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        nameList.Add(safeFileName);
-                        fileHelper.CreateFile(@"DropDownList\SongDataBaseList", string.Join(";", nameList), "txt");
+                    // Save the Master List
+                    fileHelper.CreateFile(@"DropDownList\SongDataBaseList", string.Join(";", nameList), "txt");
 
-                        // Update memory instantly
-                        songDatabaseMemory = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
-                    }
+                    // Update memory instantly
+                    songDatabaseMemory = nameList.OrderBy(x => x).ToList();
 
                     SongSearchBox.Text = safeFileName;
-                    fileHelper.CreateFileSong(safeFileName, song, "txt");
-
                     autoFilledTitle = "";
                     MessageBox.Show("Song saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -794,7 +841,7 @@ namespace RehobothMediaPro
             if (isSidebarOpen) BtnToggleSidebar_Click(null, null);
         }
 
-        private void BtnNavBible_Click(object sender, RoutedEventArgs e)
+        public void BtnNavBible_Click(object sender, RoutedEventArgs e)
         {
             SongDashboard.Visibility = Visibility.Collapsed; SettingsDashboard.Visibility = Visibility.Collapsed; BibleDashboard.Visibility = Visibility.Visible; RemoteDashboard.Visibility = Visibility.Collapsed; LowerThirdDashboard.Visibility = Visibility.Collapsed; BirthdayDashboard.Visibility = Visibility.Collapsed;
             ClearAllSidebarHighlights(); BtnMenuBible.Tag = "Active";
@@ -862,14 +909,56 @@ namespace RehobothMediaPro
         // FIX: Instantly updates the UI when you click any Language Checkbox!
         private List<string> activeLangs = new List<string> { "tamilBible" };
 
+        // FIX: The order you click the boxes is the exact order they appear on screen!
+        private System.Collections.ObjectModel.ObservableCollection<BibleLangItem> bibleLangs;
+
+        private void LoadBibleLanguageList()
+        {
+            // Initial default order
+            bibleLangs = new System.Collections.ObjectModel.ObservableCollection<BibleLangItem>
+            {
+                new BibleLangItem { DisplayName = "Tamil Bible", CodeName = "tamilBible", IsActive = true },
+                new BibleLangItem { DisplayName = "English Bible", CodeName = "englishBible", IsActive = true },
+                new BibleLangItem { DisplayName = "Hindi Bible", CodeName = "hindiBible", IsActive = false },
+                new BibleLangItem { DisplayName = "Marathi Bible", CodeName = "marathiBible", IsActive = false }
+            };
+            LanguageOrderList.ItemsSource = bibleLangs;
+        }
+
+        private void BtnMoveLangUp_Click(object sender, RoutedEventArgs e)
+        {
+            Button btn = sender as Button;
+            BibleLangItem item = btn.Tag as BibleLangItem;
+            int index = bibleLangs.IndexOf(item);
+
+            if (index > 0)
+            {
+                bibleLangs.Move(index, index - 1); // Physically moves it UP in the visual list!
+                if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) { PopulateChapterPreview(); DisplayVerse(); }
+            }
+        }
+
+        private void BtnMoveLangDown_Click(object sender, RoutedEventArgs e)
+        {
+            Button btn = sender as Button;
+            BibleLangItem item = btn.Tag as BibleLangItem;
+            int index = bibleLangs.IndexOf(item);
+
+            if (index >= 0 && index < bibleLangs.Count - 1)
+            {
+                bibleLangs.Move(index, index + 1); // Physically moves it DOWN in the visual list!
+                if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) { PopulateChapterPreview(); DisplayVerse(); }
+            }
+        }
+
         private void LanguageCheckbox_Click(object sender, RoutedEventArgs e)
         {
-            activeLangs.Clear();
-            if (chkTamil.IsChecked == true) activeLangs.Add("tamilBible");
-            if (chkEnglish.IsChecked == true) activeLangs.Add("englishBible");
-            if (chkHindi.IsChecked == true) activeLangs.Add("hindiBible");
-            if (chkMarathi.IsChecked == true) activeLangs.Add("marathiBible");
-            if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) { PopulateChapterPreview(); DisplayVerse(); }
+            // Instantly refreshes the screen when a box is checked/unchecked
+            if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook))
+            {
+                PopulateChapterPreview();
+                DisplayVerse();
+            }
         }
         // Instantly zeros out the offset and refreshes the exact default size!
         private void BtnBibleFontReset_Click(object sender, RoutedEventArgs e)
@@ -889,12 +978,13 @@ namespace RehobothMediaPro
         private readonly string[] TamilBooksList = { "ஆதியாகமம்", "யாத்திராகமம்", "லேவியராகமம்", "எண்ணாகமம்", "உபாகமம்", "யோசுவா", "நியாயாதிபதிகள்", "ரூத்", "1 சாமுவேல்", "2 சாமுவேல்", "1 இராஜாக்கள்", "2 இராஜாக்கள்", "1 நாளாகமம்", "2 நாளாகமம்", "எஸ்றா", "நெகேமியா", "எஸ்தர்", "யோபு", "சங்கீதம்", "நீதிமொழிகள்", "பிரசங்கி", "உன்னதப்பாட்டு", "ஏசாயா", "எரேமியா", "புலம்பல்", "எசேக்கியேல்", "தானியேல்", "ஓசியா", "யோவேல்", "ஆமோஸ்", "ஒபதியா", "யோனா", "மீகா", "நாகூம்", "ஆபகூக்", "செப்பனியா", "ஆகாய்", "சகரியா", "மல்கியா", "மத்தேயு", "மாற்கு", "லூக்கா", "யோவான்", "அப்போஸ்தலர்", "ரோமர்", "1 கொரிந்தியர்", "2 கொரிந்தியர்", "கலாத்தியர்", "எபேசியர்", "பிலிப்பியர்", "கொலோசெயர்", "1 தெசலோனிக்கேயர்", "2 தெசலோனிக்கேயர்", "1 தீமோத்தேயு", "2 தீமோத்தேயு", "தீத்து", "பிலேமோன்", "எபிரெயர்", "யாக்கோபு", "1 பேதுரு", "2 பேதுரு", "1 யோவான்", "2 யோவான்", "3 யோவான்", "யூதா", "வெளிப்படுத்தின விசேஷம்" };
         private readonly string[] HindiBooksList = { "उत्पत्ति", "निर्गमन", "लैव्यव्यवस्था", "गिनती", "व्यवस्थाविवरण", "यहोशू", "न्यायियों", "रूत", "1 शमूएल", "2 शमूएल", "1 राजा", "2 राजा", "1 इतिहास", "2 इतिहास", "एज्रा", "नहेमायाह", "एस्तेर", "अय्यूब", "भजन संहिता", "नीतिवचन", "सभोपदेशक", "श्रेष्ठगीत", "यशायाह", "यिर्मयाह", "विलापगीत", "यहेजकेल", "दानिय्येल", "होशे", "योएल", "आमोस", "ओबद्याह", "योना", "मीका", "नहूम", "हबक्कूक", "सपन्याह", "हाग्गै", "जकर्याह", "मलाकी", "मत्ती", "मरकुस", "लूका", "यूहन्ना", "प्रेरितों के काम", "रोमियों", "1 कुरिन्थियों", "2 कुरिन्थियों", "गलातियों", "इफिसियों", "फिलिप्पियों", "कुलुस्सियों", "1 थिस्सलुनीकियों", "2 थिस्सलुनीकियों", "1 तीमुथियुस", "2 तीमुथियुस", "तीतुस", "फिलेमोन", "इब्रानियों", "याकूब", "1 पतरस", "2 पतरस", "1 यूहन्ना", "2 यूहन्ना", "3 यूहन्ना", "यहूदा", "प्रकाशितवाक्य" };
         private readonly string[] MarathiBooksList = { "उत्पत्ती", "निर्गम", "लेवीय", "गणना", "अनुवाद", "यहोशवा", "शास्ते", "रूथ", "1 शमुवेल", "2 शमुवेल", "1 राजे", "2 राजे", "1 इतिहास", "2 इतिहास", "एज्रा", "नहेम्या", "एस्तेर", "ईयोब", "स्तोत्रसंहिता", "नीतिसूत्रे", "उपदेशक", "गीतरत्न", "यशया", "यिर्मया", "विलापगीत", "यहेज्केल", "दानीएल", "होशेय", "योएल", "आमोस", "ओबद्या", "योना", "मीखा", "नहूम", "हबक्कूक", "सफन्या", "हाग्गय", "जखऱ्या", "मलाखी", "मत्तय", "मार्क", "लूक", "योहान", "प्रेषितांची कृत्ये", "रोमकर", "1 करिंथकर", "2 करिंथकर", "गलतीकर", "इफिसकर", "फिलिप्पैकर", "कलस्सैकर", "1 थेस्सलनीकाकर", "2 थेस्सलनीकाकर", "1 तीमथ्य", "2 तीमथ्य", "तीत", "फिलेमोन", "इब्री", "याकोब", "1 पेत्र", "2 पेत्र", "1 योहान", "2 योहान", "3 योहान", "यहूदा", "प्रकटीकरण" };
-        private void BibleSearchBox_KeyDown(object sender, KeyEventArgs e)
+        public void BibleSearchBox_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
                 e.Handled = true;
                 ParseBibleSearch(BibleSearchBox.Text);
+                ChapterVerseList.Focus();
             }
         }
 
@@ -903,7 +993,7 @@ namespace RehobothMediaPro
             if (e.ClickCount >= 3) { BibleSearchBox.SelectAll(); e.Handled = true; }
         }
 
-        private void BtnNextVerse_Click(object sender, RoutedEventArgs e)
+        public void BtnNextVerse_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(currentBook)) return;
 
@@ -923,7 +1013,7 @@ namespace RehobothMediaPro
             }
         }
 
-        private void BtnPrevVerse_Click(object sender, RoutedEventArgs e)
+        public void BtnPrevVerse_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(currentBook) || currentVerse <= 1) return;
 
@@ -941,7 +1031,7 @@ namespace RehobothMediaPro
 
         // When you click a verse in the Middle Column preview list!
         // FIX: Still handles keyboard navigation normally
-        private void ChapterVerseList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        public void ChapterVerseList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (isUpdatingList || ChapterVerseList.SelectedIndex == -1) return;
 
@@ -1003,6 +1093,7 @@ namespace RehobothMediaPro
             }
 
             // 3. EXTRACT NUMBERS: Strip the matched book name away, leaving only the Chapter & Verse!
+            // 3. EXTRACT NUMBERS: Strip the matched book name away, leaving only the Chapter & Verse!
             if (currentBook != null)
             {
                 string remainder = q.Substring(matchedPrefix.Length).Trim();
@@ -1012,10 +1103,42 @@ namespace RehobothMediaPro
                 currentVerse = 1; // Default
                 if (numParts.Length > 1) int.TryParse(numParts[1], out currentVerse);
 
+                // --- NEW: CHAPTER SNAPPER ---
+                // FIX: Uses the top priority active language to fetch the chapter preview list!
+                string folderName = bibleLangs.FirstOrDefault(l => l.IsActive)?.CodeName ?? "tamilBible"; int bookIndex = Array.IndexOf(BibleBooksList, currentBook) + 1;
+                string folderNum = bookIndex < 10 ? $"0{bookIndex}" : bookIndex.ToString();
+                string bookFolder = System.IO.Path.Combine(FileHelper.GetAppFolder(), "BibleDataBase", folderName, folderNum);
+
+                if (System.IO.Directory.Exists(bookFolder))
+                {
+                    if (int.TryParse(currentChapter, out int requestedChapter))
+                    {
+                        // Count backwards until we find the highest chapter file that physically exists!
+                        while (requestedChapter > 1 && !System.IO.File.Exists(System.IO.Path.Combine(bookFolder, $"{requestedChapter}.htm")))
+                        {
+                            requestedChapter--;
+                        }
+                        currentChapter = requestedChapter.ToString();
+                    }
+                }
+
+                // Must populate the list BEFORE verse snapping so we know how many verses exist!
+                PopulateChapterPreview();
+
+                // --- NEW: VERSE SNAPPER ---
+                if (ChapterVerseList.Items.Count > 0)
+                {
+                    if (currentVerse > ChapterVerseList.Items.Count)
+                    {
+                        currentVerse = ChapterVerseList.Items.Count; // Snaps to the very last verse!
+                    }
+                    if (currentVerse < 1) currentVerse = 1;
+                }
+
+                // Output the perfectly snapped numbers to the UI
                 BibleSearchBox.Text = $"{currentBook} {currentChapter} {currentVerse}";
                 BibleSearchBox.CaretIndex = BibleSearchBox.Text.Length;
 
-                PopulateChapterPreview();
                 DisplayVerse();
             }
             else
@@ -1084,10 +1207,12 @@ namespace RehobothMediaPro
             ChapterVerseList.ItemsSource = null;
             LblChapterTitle.Text = $"{currentBook} {currentChapter}";
 
-            // Failsafe: Ensure at least one language is active
-            if (activeLangs == null || activeLangs.Count == 0) activeLangs = new List<string> { "tamilBible" };
+            if (bibleLangs == null) return;
 
-            // FIX: Uses the activeLangs array so the UI preview perfectly matches your Swapped Live Display!
+            // FIX: Grabs the active languages from the reorder list!
+            List<string> activeLangs = bibleLangs.Where(l => l.IsActive).Select(l => l.CodeName).ToList();
+            if (activeLangs.Count == 0) activeLangs.Add("tamilBible"); // Failsafe
+
             if (activeLangs.Count == 1)
             {
                 ChapterVerseList.ItemTemplate = (DataTemplate)this.FindResource("SingleLangTemplate");
@@ -1109,7 +1234,6 @@ namespace RehobothMediaPro
             {
                 string p = priDict.ContainsKey(i) ? $"{i}. {priDict[i]}" : $"{i}. [Not Found]";
                 string s = secDict.ContainsKey(i) ? $"{i}. {secDict[i]}" : "";
-                // The UI elements will naturally use the system font, but we can force it in XAML in Step 3!
                 previewList.Add(new VersePreviewItem { PrimaryText = p, SecondaryText = s });
             }
 
@@ -1119,43 +1243,44 @@ namespace RehobothMediaPro
 
         private void DisplayVerse()
         {
-            if (string.IsNullOrEmpty(currentBook) || activeLangs.Count == 0) return;
+            if (string.IsNullOrEmpty(currentBook) || bibleLangs == null) return;
+
+            // 1. Grab ONLY the languages that are currently checked, in the exact order they appear on screen!
+            List<string> activeLangs = bibleLangs.Where(l => l.IsActive).Select(l => l.CodeName).ToList();
+            if (activeLangs.Count == 0) return; // Failsafe
 
             List<string> verseTexts = new List<string>();
             foreach (string lang in activeLangs)
             {
-                // Fetch the verses
                 verseTexts.Add(FetchVerseText(currentBook, currentChapter, currentVerse, lang));
             }
 
-            // FIX 1 & 2: Exact translation mapping with NO repeating numbers!
+            // 2. Exact VerseView Translation Format (No repeating numbers!)
             string finalHeader = "";
-            if (activeLangs.Count > 0)
+            int bIdx = Array.IndexOf(BibleBooksList, currentBook);
+
+            // Primary Name
+            string priName = currentBook;
+            if (bIdx >= 0)
             {
-                int bIdx = Array.IndexOf(BibleBooksList, currentBook);
+                if (activeLangs[0] == "tamilBible") priName = TamilBooksList[bIdx];
+                else if (activeLangs[0] == "hindiBible") priName = HindiBooksList[bIdx];
+                else if (activeLangs[0] == "marathiBible") priName = MarathiBooksList[bIdx];
+            }
+            finalHeader = $"{priName} {currentChapter}:{currentVerse}";
 
-                // Primary Name
-                string priName = currentBook;
-                if (bIdx >= 0)
-                {
-                    if (activeLangs[0] == "tamilBible") priName = TamilBooksList[bIdx];
-                    else if (activeLangs[0] == "hindiBible") priName = HindiBooksList[bIdx];
-                    else if (activeLangs[0] == "marathiBible") priName = MarathiBooksList[bIdx];
-                }
-                finalHeader = $"{priName} {currentChapter}:{currentVerse}";
+            // Secondary Name (BRACKETS ONLY)
+            if (activeLangs.Count >= 2 && bIdx >= 0)
+            {
+                string secName = currentBook;
+                if (activeLangs[1] == "tamilBible") secName = TamilBooksList[bIdx];
+                else if (activeLangs[1] == "hindiBible") secName = HindiBooksList[bIdx];
+                else if (activeLangs[1] == "marathiBible") secName = MarathiBooksList[bIdx];
 
-                // Secondary Name (BRACKETS ONLY)
-                if (activeLangs.Count >= 2 && bIdx >= 0)
-                {
-                    string secName = currentBook;
-                    if (activeLangs[1] == "tamilBible") secName = TamilBooksList[bIdx];
-                    else if (activeLangs[1] == "hindiBible") secName = HindiBooksList[bIdx];
-                    else if (activeLangs[1] == "marathiBible") secName = MarathiBooksList[bIdx];
-
-                    finalHeader += $" [{secName}]";
-                }
+                finalHeader += $" [{secName}]";
             }
 
+            // 3. Update the UI Highlight
             if (currentVerse - 1 >= 0 && currentVerse - 1 < ChapterVerseList.Items.Count)
             {
                 Application.Current.Dispatcher.InvokeAsync(() =>
@@ -1167,13 +1292,13 @@ namespace RehobothMediaPro
                 }, System.Windows.Threading.DispatcherPriority.Loaded);
             }
 
+            // 4. Gather Formatting Settings
             string vFont = CbVerseFont.SelectedItem?.ToString() ?? "Segoe UI";
             string vColor = CbVerseColor.SelectedItem?.ToString() ?? "White";
             string rFont = CbRefFont.SelectedItem?.ToString() ?? "Segoe UI";
             bool animEnabled = chkAnimBible.IsChecked == true;
             int animSpeed = (int)BibleAnimSpeed.Value;
 
-            // Generate inner HTML for JS injection
             string verseHtml = "";
             for (int i = 0; i < verseTexts.Count; i++)
             {
@@ -1184,28 +1309,35 @@ namespace RehobothMediaPro
                 }
             }
 
-            // Always save to disk so the physical file is up to date
+            // 5. Send to Engine!
+            // 5. Send to Engine!
+            // 5. Send to Engine! (Cleaned up to 11 arguments!)
             fileHelper.SaveasHtmlForVerseViewBible(finalHeader, verseTexts, customBgPath, bibleFontSizeOffset, vFont, vColor, rFont, chkPriBold.IsChecked == true, chkSecBold.IsChecked == true, animEnabled, animSpeed);
-            // FIX: If we are already on the Bible screen, use JS ONLY! No reloading allowed.
-            if (currentlyActiveScreen == "Bible")
+            // FIX: Force a hard reload if ANY Lower Third (Text, Image, or Video) is actively taking up the screen!
+            if (currentlyActiveScreen == "Bible" && !isLtTextLive && !isLtImageLive && !isLtVideoLive)
             {
                 string jsHtml = verseHtml.Replace("\r", "").Replace("\n", "").Replace("'", "\\'");
                 string jsHeader = finalHeader.Replace("'", "\\'");
                 string jsAnim = animEnabled ? "true" : "false";
 
-                chromeHelper.ExecuteJavascriptOnLive($"updateVerse('{jsHeader}', '{jsHtml}', {bibleFontSizeOffset}, {jsAnim}, {animSpeed});");
+                chromeHelper.ExecuteJavascriptOnLive($"if(typeof updateVerse === 'function') {{ updateVerse('{jsHeader}', '{jsHtml}', {bibleFontSizeOffset}, {jsAnim}, {animSpeed}); }} else {{ location.reload(); }}");
             }
             else
             {
-                // We were on a different screen (Theme/Song). Navigate cleanly to the Bible.
                 chromeHelper.NavigateLiveDisplay("SongLive");
                 if (chkDualDisplay.IsChecked == true) chromeHelper.NavigatePresentationDisplay("SongLive");
                 currentlyActiveScreen = "Bible";
+
+                // Reset all Lower Third toggle buttons visually so they don't get stuck on "Remove"!
+                if (isLtTextLive) { BtnSubmitLtText.Content = "🚀 GO LIVE!"; BtnSubmitLtText.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478"); isLtTextLive = false; }
+                if (isLtImageLive) { BtnSubmitLtImage.Content = "🚀 PUSH LIVE"; BtnSubmitLtImage.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478"); isLtImageLive = false; }
+                if (isLtVideoLive) { BtnSubmitLtVideo.Content = "🚀 PUSH LIVE"; BtnSubmitLtVideo.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478"); isLtVideoLive = false; }
             }
 
-            // Update History List
-            if (!HistoryList.Items.Contains($"{currentBook} {currentChapter}:{currentVerse}"))
-                HistoryList.Items.Insert(0, $"{currentBook} {currentChapter}:{currentVerse}");
+            // 6. Update History
+            string historyString = $"{currentBook} {currentChapter}:{currentVerse}";
+            if (HistoryList.Items.Contains(historyString)) HistoryList.Items.Remove(historyString);
+            HistoryList.Items.Insert(0, historyString);
             if (HistoryList.Items.Count > 20) HistoryList.Items.RemoveAt(20);
         }
 
@@ -1243,19 +1375,6 @@ namespace RehobothMediaPro
             catch { return ""; }
         }
 
-        // Swaps the order of the top two checked languages!
-        private void BtnSwapLanguages_Click(object sender, RoutedEventArgs e)
-        {
-            if (activeLangs.Count > 1)
-            {
-                // Takes the first item and moves it to the back (Cycles them!)
-                var first = activeLangs[0];
-                activeLangs.RemoveAt(0);
-                activeLangs.Add(first);
-
-                if (BibleDashboard.Visibility == Visibility.Visible && !string.IsNullOrEmpty(currentBook)) { PopulateChapterPreview(); DisplayVerse(); }
-            }
-        }
         // --- BIBLE BACKGROUND GALLERY ENGINE ---
         private System.Collections.ObjectModel.ObservableCollection<GalleryItem> galleryItems = new System.Collections.ObjectModel.ObservableCollection<GalleryItem>();
 
@@ -1501,66 +1620,145 @@ namespace RehobothMediaPro
 
 
         // --- 2. IMAGES & LOGOS ---
+
+        // The memory list for the new Lower Thirds image queue!
+        private System.Collections.ObjectModel.ObservableCollection<GalleryItem> ltImageGalleryItems = new System.Collections.ObjectModel.ObservableCollection<GalleryItem>();
+
         private void BtnBrowseLtImage_Click(object sender, RoutedEventArgs e)
         {
-            Microsoft.Win32.OpenFileDialog ofd = new Microsoft.Win32.OpenFileDialog() { Filter = "Images|*.png;*.jpg;*.jpeg" };
+            // FIX: Multiselect is enabled! You can highlight 5 images at once!
+            Microsoft.Win32.OpenFileDialog ofd = new Microsoft.Win32.OpenFileDialog() { Filter = "Images|*.png;*.jpg;*.jpeg", Multiselect = true };
             if (ofd.ShowDialog() == true)
             {
-                currentImagePath = ofd.FileName;
-
-                // FIX: Instantly trigger the preview monitor!
-                BtnPreviewLtImage_Click(null, null);
+                foreach (string file in ofd.FileNames) AddImageToLtGallery(file);
             }
         }
-        // Enables the nice "+ Copy" cursor when dragging a file over the card
+
         private void ImageCard_DragOver(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-                e.Effects = DragDropEffects.Copy;
-            else
-                e.Effects = DragDropEffects.None;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effects = DragDropEffects.Copy;
+            else e.Effects = DragDropEffects.None;
             e.Handled = true;
         }
 
-        // Grabs the physical file when you drop it!
         private void ImageCard_Drop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                if (files.Length > 0)
+                foreach (string file in files)
                 {
-                    string file = files[0];
-                    if (file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                        file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                        file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                    if (file.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
                     {
-                        currentImagePath = file;
-
-                        // FIX: Instantly trigger the preview monitor! No text label needed.
-                        BtnPreviewLtImage_Click(null, null);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Please drop a valid .jpg or .png image file!", "Invalid File");
+                        AddImageToLtGallery(file);
                     }
                 }
             }
         }
-        private void BtnPreviewLtImage_Click(object sender, RoutedEventArgs e)
+
+        // Helper method that securely loads the image into RAM without locking the file
+        private void AddImageToLtGallery(string imgPath)
+        {
+            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bitmap.UriSource = new Uri(imgPath);
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            // FIX: If it's the first image added, make it active and Green immediately!
+            bool isFirst = ltImageGalleryItems.Count == 0;
+            if (isFirst) currentImagePath = imgPath;
+            {
+                currentImagePath = imgPath;
+                // FIX: Instantly preview the very first image you add to an empty list!
+                AutoPreviewImage();
+            }
+
+            ltImageGalleryItems.Add(new GalleryItem
+            {
+                FilePath = imgPath,
+                ImageSource = bitmap,
+                BorderColor = isFirst ? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478") : System.Windows.Media.Brushes.Transparent
+            });
+
+            if (LtImageGalleryList.ItemsSource == null)
+                LtImageGalleryList.ItemsSource = ltImageGalleryItems;
+        }
+
+
+
+        private void BtnDeleteLtImage_Click(object sender, RoutedEventArgs e)
+        {
+            Button btn = sender as Button;
+            string imgPath = btn.Tag.ToString();
+
+            var item = ltImageGalleryItems.FirstOrDefault(x => x.FilePath == imgPath);
+            if (item != null) ltImageGalleryItems.Remove(item);
+
+            // FIX: If you deleted the active image, auto-select the next available one!
+            if (currentImagePath == imgPath)
+            {
+                currentImagePath = "";
+                if (ltImageGalleryItems.Count > 0)
+                {
+                    currentImagePath = ltImageGalleryItems[0].FilePath;
+                    ltImageGalleryItems[0].BorderColor = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
+                }
+            }
+        }
+        // FIX: Translates standard vertical Mouse-Wheel scrolling into Horizontal scrolling!
+        // FIX: Flawless Mouse Wheel Scrolling!
+        private void LtImageGalleryList_PreviewMouseWheel (object sender, MouseWheelEventArgs e)
+        {
+            ScrollViewer sv = sender as ScrollViewer;
+            if (sv != null)
+            {
+                if (e.Delta > 0) sv.LineLeft();
+                else sv.LineRight();
+                e.Handled = true; // Stops the rest of the app from scrolling
+            }
+        }
+
+        // FIX: Direct Click Handling. No blue boxes, no glitches!
+        private void GalleryImage_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border clickedBorder && clickedBorder.Tag != null)
+            {
+                currentImagePath = clickedBorder.Tag.ToString();
+
+                // Update the Green Border instantly!
+                foreach (var item in ltImageGalleryItems)
+                {
+                    item.BorderColor = item.FilePath == currentImagePath ?
+                        (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478") :
+                        System.Windows.Media.Brushes.Transparent;
+                }
+                AutoPreviewImage();
+
+            }
+        }
+
+        // FIX: The silent, automatic preview engine!
+        private void AutoPreviewImage()
         {
             if (string.IsNullOrEmpty(currentImagePath)) return;
             string safeName = System.IO.Path.GetFileName(currentImagePath).Replace(" ", "_");
+
+            string destFolder = System.IO.Path.Combine(FileHelper.GetAppFolder(), @"WebTemplate\images");
+            if (!System.IO.Directory.Exists(destFolder)) System.IO.Directory.CreateDirectory(destFolder);
+            System.IO.File.Copy(currentImagePath, System.IO.Path.Combine(destFolder, safeName), true);
+
             string template = chkLtPortrait.IsChecked == true ? "PotraitImage" : "Transprentlogo";
+            fileHelper.SaveasHtmlForLowerThird(new HtmlModel() { Lyrics = safeName }, template);
 
-            HtmlModel imgModel = new HtmlModel() { Lyrics = safeName };
-
-            // FIX: Saves to the hidden Preview monitor instead of SongLive!
-            fileHelper.SaveasHtmlForLowerThird(imgModel, template);
-
-            // Because the old method auto-saves to SongLive, we just copy it to the Preview file!
             System.IO.File.Copy(System.IO.Path.Combine(FileHelper.GetAppFolder(), @"WebTemplate\SongLive.html"), System.IO.Path.Combine(FileHelper.GetAppFolder(), @"WebTemplate\LtPreview.html"), true);
-            MiniPreviewMonitor.CoreWebView2.Reload();
+
+            // Force the mini monitor to refresh and show the new image instantly!
+            if (MiniPreviewMonitor != null && MiniPreviewMonitor.CoreWebView2 != null)
+            {
+                MiniPreviewMonitor.CoreWebView2.Reload();
+            }
         }
         private void BtnSubmitLtImage_Click(object sender, RoutedEventArgs e)
         {
@@ -1577,7 +1775,6 @@ namespace RehobothMediaPro
 
                 System.IO.File.Copy(currentImagePath, System.IO.Path.Combine(destFolder, safeName), true);
 
-                // FIX: Actually reads the Portrait Checkbox for the Live Screen!
                 string template = chkLtPortrait.IsChecked == true ? "PotraitImage" : "Transprentlogo";
 
                 HtmlModel imgModel = new HtmlModel() { Lyrics = safeName };
@@ -1591,8 +1788,12 @@ namespace RehobothMediaPro
             }
             else
             {
-                FadeOutLowerThird();
-                btn.Content = "🚀 PUSH IMAGE LIVE";
+                // FIX: Forcefully writes a blank green screen to wipe the image!
+                string baseDir = FileHelper.GetAppFolder();
+                System.IO.File.WriteAllText(System.IO.Path.Combine(baseDir, @"WebTemplate\SongLive.html"), "<html style='background:#00ff00;'></html>");
+                chromeHelper.RefreshChrome();
+
+                btn.Content = "🚀 PUSH LIVE";
                 btn.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
                 isLtImageLive = false;
             }
@@ -2409,6 +2610,9 @@ namespace RehobothMediaPro
         // ----------------------------------------------------------------
         // MOBILE REMOTE SERVER
         // ----------------------------------------------------------------
+        // ----------------------------------------------------------------
+        // MOBILE REMOTE SERVER
+        // ----------------------------------------------------------------
         private void BtnToggleServer_Click(object sender, RoutedEventArgs e)
         {
             if (!RemoteServer.IsRunning)
@@ -2417,8 +2621,30 @@ namespace RehobothMediaPro
                 {
                     RemoteServer.Start();
                     BtnToggleServer.Content = "🛑 STOP SERVER";
-                    BtnToggleServer.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF4757"); // Red
+                    BtnToggleServer.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FF4757");
                     ServerUrlBox.Text = RemoteServer.ServerUrl;
+
+                    // --- NEW: OFFLINE QR CODE GENERATOR ---
+                    QRCodeGenerator qrGenerator = new QRCodeGenerator();
+                    QRCodeData qrCodeData = qrGenerator.CreateQrCode(RemoteServer.ServerUrl, QRCodeGenerator.ECCLevel.Q);
+
+                    // We use BitmapByteQRCode to avoid WPF/WinForms image clashing!
+                    BitmapByteQRCode qrCode = new BitmapByteQRCode(qrCodeData);
+                    byte[] qrBytes = qrCode.GetGraphic(20);
+
+                    using (System.IO.MemoryStream ms = new System.IO.MemoryStream(qrBytes))
+                    {
+                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                        bitmap.StreamSource = ms;
+                        bitmap.EndInit();
+                        bitmap.Freeze(); // Optimize for WPF
+
+                        QrCodeImage.Source = bitmap;
+                    }
+                    // --------------------------------------
+
                     ServerInfoPanel.Visibility = Visibility.Visible;
                 }
                 catch (Exception ex)
@@ -2430,7 +2656,7 @@ namespace RehobothMediaPro
             {
                 RemoteServer.Stop();
                 BtnToggleServer.Content = "🚀 START SERVER";
-                BtnToggleServer.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478"); // Green
+                BtnToggleServer.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#00B478");
                 ServerInfoPanel.Visibility = Visibility.Collapsed;
             }
         }
@@ -2522,12 +2748,7 @@ namespace RehobothMediaPro
             MessageBox.Show("Presentation Gradient Saved! The app will remember this forever.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         // --- CLOUD SYNC SETTINGS ---
-        
-        // FIX: Updates the text label when you drag the Reference Font Size slider!
-        private void BibleRefSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (LblRefSizeVal != null) LblRefSizeVal.Text = e.NewValue.ToString("0.0") + " vh";
-        }
+
         // FIX: Saves your Animation preferences to memory so it doesn't throw a build error!
         private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -2544,9 +2765,18 @@ namespace RehobothMediaPro
         // ----------------------------------------------------------------
         // SMART SONG SEARCH ENGINE
         // ----------------------------------------------------------------
+        // FIX: Instantly shows the suggestion list when you click inside the empty search box!
+        private void SongSearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(SongSearchBox.Text) && songDatabaseMemory != null && songDatabaseMemory.Count > 0)
+            {
+                SongSuggestionList.ItemsSource = songDatabaseMemory;
+                SongSuggestionPopup.IsOpen = true;
+            }
+        }
         private void SongSearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (isSongLoading) return; // Ignore if we just loaded a song
+            if (isSongLoading) return;
 
             string query = SongSearchBox.Text.ToLower().Trim();
             if (string.IsNullOrEmpty(query))
@@ -2555,7 +2785,12 @@ namespace RehobothMediaPro
                 return;
             }
 
-            // Filters instantly based on middle-words!
+            // FIX: Failsafe! If memory is empty, reload the list from the hard drive instantly!
+            if (songDatabaseMemory == null || songDatabaseMemory.Count == 0)
+            {
+                songDatabaseMemory = fileHelper.FiletoList("SongDataBaseList").OrderBy(x => x).ToList();
+            }
+
             var matches = songDatabaseMemory.Where(x => x.ToLower().Contains(query)).ToList();
 
             if (matches.Count > 0)
@@ -2568,7 +2803,6 @@ namespace RehobothMediaPro
                 SongSuggestionPopup.IsOpen = false;
             }
         }
-
         // Passes Arrow Keys from the TextBox into the Suggestion List!
         private void SongSearchBox_KeyDown(object sender, KeyEventArgs e)
         {
@@ -2618,8 +2852,24 @@ namespace RehobothMediaPro
 
             if (System.IO.File.Exists(fullPath))
             {
-                string rawText = System.IO.File.ReadAllText(fullPath);
-                LyricsInputBox.Text = rawText.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+                string rawText = System.IO.File.ReadAllText(fullPath).Replace("\r\n", "\n").Replace("\r", "\n");
+
+                // NEW: Splits the file if it has our secret Tanglish separator!
+                string[] parts = rawText.Split(new string[] { "\n===TANGLISH===\n" }, StringSplitOptions.None);
+
+                LyricsInputBox.Text = parts[0].Replace("\n", "\r\n");
+
+                if (parts.Length > 1)
+                {
+                    SecondaryLyricsBox.Text = parts[1].Replace("\n", "\r\n");
+                    chkDualEditor.IsChecked = true;
+                }
+                else
+                {
+                    SecondaryLyricsBox.Text = "";
+                    chkDualEditor.IsChecked = false;
+                }
+                ChkDualEditor_Click(null, null); // Applies the UI layout
             }
             else LyricsInputBox.Text = string.Empty;
 
@@ -2768,5 +3018,26 @@ namespace RehobothMediaPro
 
             DateSelectorPopup.IsOpen = false; // Close the menu!
         }
+        // Helper class for the Language Reorder List
+        public class BibleLangItem
+        {
+            public string DisplayName { get; set; }
+            public string CodeName { get; set; }
+            public bool IsActive { get; set; }
+        }
+        // Helper to find hidden elements inside WPF controls (like ScrollViewers inside ListBoxes)
+        public static T GetDescendantByType<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj == null) return null;
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+            {
+                var child = VisualTreeHelper.GetChild(depObj, i);
+                var result = (child as T) ?? GetDescendantByType<T>(child);
+                if (result != null) return result;
+            }
+            return null;
+        }
+        // Universal Drag-to-Scroll for any ScrollViewer (like on your phone!)
+        
     }
 }
