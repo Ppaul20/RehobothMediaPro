@@ -71,6 +71,10 @@ namespace RehobothMediaPro
             // FIX: Load the correct memory file when the app starts! (Defaults to Green Screen)
             if (System.IO.File.Exists(memGreen)) FontSizeBox.Text = System.IO.File.ReadAllText(memGreen);
             else FontSizeBox.Text = "45"; // Default if no memory file exists
+
+            // FIX: Load the correct memory file for the secondary font when the app starts! (Defaults to Green Screen)
+            if (System.IO.File.Exists(memSecGreen)) SecFontSizeBox.Text = System.IO.File.ReadAllText(memSecGreen);
+            else SecFontSizeBox.Text = "35"; // Default if no memory file exist
             LoadBibleDropdowns();
             LoadBibleBackgrounds(); // FIX: Now the gallery instantly loads when the app opens!
             LoadLowerThirds(); // Populates Pastor Names and MP4 Lists!
