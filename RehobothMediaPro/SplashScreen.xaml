@@ -90,7 +90,7 @@
                     <TextBlock x:Name="TxtStatus" Grid.Column="0" Text="Initializing Engine..." Foreground="#A0A5C0" FontSize="12" FontFamily="Segoe UI" FontWeight="SemiBold"/>
 
                     <!-- The Version Number (Right) -->
-                    <TextBlock Grid.Column="1" Text="v1.4.5 (Beta)" Foreground="#4A4D67" FontSize="12" FontFamily="Segoe UI" FontWeight="Bold"/>
+                    <TextBlock Grid.Column="1" Text="v1.7.0 (Beta)" Foreground="#4A4D67" FontSize="12" FontFamily="Segoe UI" FontWeight="Bold"/>
                 </Grid>
             </Grid>
 

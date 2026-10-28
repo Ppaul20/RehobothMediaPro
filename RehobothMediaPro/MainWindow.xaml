@@ -192,12 +192,16 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
+
+                                    <!-- Custom Search Engine -->
                                     <Grid Grid.Column="0">
-                                        <Border Background="White" CornerRadius="8" BorderThickness="0">
+                                        <!-- x:Name="SearchBorder" is required so the Popup knows exactly what to attach to! -->
+                                        <Border x:Name="SearchBorder" Background="White" CornerRadius="8" BorderThickness="0">
                                             <TextBox x:Name="SongSearchBox" Height="35" FontSize="14" Background="Transparent" Foreground="Black" Padding="10,0" VerticalContentAlignment="Center" BorderThickness="0" TextChanged="SongSearchBox_TextChanged" KeyDown="SongSearchBox_KeyDown" GotFocus="SongSearchBox_GotFocus"/>
                                         </Border>
 
-                                        <Popup x:Name="SongSuggestionPopup" PlacementTarget="{Binding ElementName=SongSearchBox}" StaysOpen="False" IsOpen="False" MaxHeight="300" MinWidth="{Binding ElementName=SongSearchBox, Path=ActualWidth}">
+                                        <!-- PlacementTarget MUST point to SearchBorder so it matches the rounded corners! -->
+                                        <Popup x:Name="SongSuggestionPopup" PlacementTarget="{Binding ElementName=SearchBorder}" StaysOpen="False" IsOpen="False" MaxHeight="300" MinWidth="{Binding ElementName=SearchBorder, Path=ActualWidth}">
                                             <Border Background="White" BorderThickness="1" BorderBrush="Gray" CornerRadius="0,0,8,8" SnapsToDevicePixels="True" MaxWidth="500">
                                                 <ListBox x:Name="SongSuggestionList" Background="Transparent" BorderThickness="0" Foreground="Black" FontSize="14" ScrollViewer.HorizontalScrollBarVisibility="Auto" PreviewMouseUp="SongSuggestionList_PreviewMouseUp" KeyDown="SongSuggestionList_KeyDown">
                                                     <ListBox.ItemContainerStyle>
@@ -228,7 +232,12 @@
                                             </Border>
                                         </Popup>
                                     </Grid>
-                                    <Button Grid.Column="1" Content="➕ Add to Setlist" Height="35" Padding="10,0" Margin="10,0,0,0" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnAddToSetlist_Click"/>
+
+                                    <!-- FIX: Deleted the accidental duplicate button! Just one clean StackPanel now. -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Content="🔄 Resync DB" Height="35" Padding="10,0" Margin="10,0,0,0" Background="#FF9F43" Foreground="Black" FontWeight="Bold" Cursor="Hand" Click="BtnResyncSongDb_Click" ToolTip="Scans the folder and rebuilds the dropdown list!"/>
+                                        <Button Content="➕ Add to Setlist" Height="35" Padding="10,0" Margin="10,0,0,0" Background="#6C5DD3" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnAddToSetlist_Click"/>
+                                    </StackPanel>
                                 </Grid>
 
                                 <Border Grid.Row="1" Background="#0F111A" CornerRadius="8" BorderThickness="1" BorderBrush="#2D3047" Margin="0,15,0,0">
@@ -252,21 +261,34 @@
                                 </Border>
                             </Grid>
 
-                            <!-- ROW 1: Action Bar -->
-                            <Grid Grid.Row="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Button Content="🌐 Fetch Web" Height="30" Background="#0085FF" Margin="0,0,10,0" Click="BtnFetchWeb_Click"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <TextBlock Text="Font Size:" Foreground="LightGray" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                    <TextBox x:Name="FontSizeBox" Text="45" Width="40" Height="30" TextAlignment="Center" Background="#2D3047" Foreground="White" BorderThickness="0" VerticalContentAlignment="Center"/>
-                                    <Button Content="+" Width="30" Height="30" Background="#2D3047" Margin="2,0,0,0" Click="BtnIncreaseFont_Click"/>
-                                    <Button Content="-" Width="30" Height="30" Background="#2D3047" Margin="2,0,0,0" Click="BtnDecreaseFont_Click"/>
-                                </StackPanel>
-                            </Grid>
+                            <!-- ROW 1: Action Bar (Perfectly Flattened!) -->
+                            <StackPanel Grid.Row="1" Margin="0,0,0,10">
 
+                                <Button Content="🌐 Fetch Web" Height="30" Background="#0085FF" Foreground="White" FontWeight="Bold" BorderThickness="0" Margin="0,0,0,10" Cursor="Hand" Click="BtnFetchWeb_Click"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Primary Font -->
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <TextBlock Text="Pri:" Foreground="LightGray" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                        <TextBox x:Name="FontSizeBox" Text="45" Width="35" Height="30" TextAlignment="Center" Background="#2D3047" Foreground="White" BorderThickness="0" VerticalContentAlignment="Center"/>
+                                        <Button Content="+" Width="30" Height="30" Background="#2D3047" Foreground="White" BorderThickness="0" Margin="2,0,0,0" Cursor="Hand" Click="BtnIncreaseFont_Click"/>
+                                        <Button Content="-" Width="30" Height="30" Background="#2D3047" Foreground="White" BorderThickness="0" Margin="2,0,0,0" Cursor="Hand" Click="BtnDecreaseFont_Click"/>
+                                    </StackPanel>
+
+                                    <!-- Secondary Font -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <TextBlock Text="Sec:" Foreground="LightGray" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                        <TextBox x:Name="SecFontSizeBox" Text="35" Width="35" Height="30" TextAlignment="Center" Background="#2D3047" Foreground="White" BorderThickness="0" VerticalContentAlignment="Center"/>
+                                        <Button Content="+" Width="30" Height="30" Background="#2D3047" Foreground="White" BorderThickness="0" Margin="2,0,0,0" Cursor="Hand" Click="BtnIncreaseSecFont_Click"/>
+                                        <Button Content="-" Width="30" Height="30" Background="#2D3047" Foreground="White" BorderThickness="0" Margin="2,0,0,0" Cursor="Hand" Click="BtnDecreaseSecFont_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
                             <!-- ROW 2: Translation Toggles -->
                             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,10">
                                 <CheckBox x:Name="chkDualEditor" Content="Dual Editor" Foreground="White" Margin="0,0,10,0" Click="ChkDualEditor_Click"/>
@@ -288,8 +310,16 @@
 
                                 <Border x:Name="SecondaryEditorBorder" Grid.Row="2" Background="#1A1C29" CornerRadius="12" Padding="10" Visibility="Collapsed" BorderBrush="#00E5FF" BorderThickness="1">
                                     <Grid>
-                                        <TextBlock Text="Tanglish / Secondary Language" Foreground="Gray" FontSize="11" Margin="0,0,0,5" VerticalAlignment="Top"/>
-                                        <TextBox x:Name="SecondaryLyricsBox" Margin="0,20,0,0" CaretBrush="White" Background="Transparent" Foreground="#00E5FF" FontSize="15" AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False"/>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="Tanglish / Secondary Language" Foreground="Gray" FontSize="11" Margin="0,0,0,5" VerticalAlignment="Top"/>
+
+                                        <!-- FIX: Re-labeled to clearly state Tamil to Tanglish! -->
+                                        <Button x:Name="BtnTranslateTamil" Grid.Column="1" Content="அ ➔ A  Translate to Tanglish" Height="22" Padding="10,0" Background="#6C5DD3" Foreground="White" FontSize="11" FontWeight="Bold" Cursor="Hand" BorderThickness="0" Margin="0,-5,0,0" VerticalAlignment="Top" Click="BtnTranslateTamil_Click"/>
+                                        <TextBox x:Name="SecondaryLyricsBox" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,20,0,0" CaretBrush="White" Background="Transparent" Foreground="#00E5FF" FontSize="15" AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False"/>
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -1040,16 +1070,26 @@
                                                 <Button Content="💾 SAVE GRADIENT" Height="30" Background="#00B478" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnSaveGradient_Click"/>
                                             </StackPanel>
                                         </Border>
-                                        <!-- NEW: Safe Database Cleaner -->
+                                        <!-- Database Maintenance -->
                                         <Border Background="#0F111A" CornerRadius="10" Padding="20">
                                             <StackPanel>
                                                 <TextBlock Text="Database Maintenance" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-                                                <TextBlock Text="Safely cleans up your hard drive by scanning for and deleting any empty or broken ghost files." Foreground="Gray" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
-                                                <Button Content="🧹 PURGE EMPTY FILES" Height="30" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnPurgeEmptySongs_Click"/>
+                                                <TextBlock Text="Safely cleans up your hard drive by scanning for and deleting empty/broken files and duplicate copies." Foreground="Gray" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
+
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition/>
+                                                        <ColumnDefinition Width="10"/>
+                                                        <ColumnDefinition/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Button Grid.Column="0" Content="🧹 PURGE EVENT DB" Height="30" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnPurgeEmptyEvents_Click" ToolTip="Deletes empty Birthdays &amp; Anniversaries"/>
+                                                    <!-- NEW: The Song Database Purger! -->
+                                                    <Button Grid.Column="2" Content="🧹 PURGE SONG DB" Height="30" Background="#FF4757" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnPurgeGhostSongs_Click" ToolTip="Deletes empty song files and '- Copy' duplicates"/>
+                                                </Grid>
                                             </StackPanel>
                                         </Border>
 
-                                        
+
                                     </StackPanel>
 
                                 </Grid>

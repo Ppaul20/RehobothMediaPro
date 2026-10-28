@@ -1,0 +1,24 @@
+Upgrade the App Version to 1.4.5
+Let's tell Windows this is a brand-new release!
+In the Solution Explorer (on the right), right-click your main RehobothMediaPro project (the C# one, not the Setup project) and click Properties.
+
+On the left menu, click Package.
+Change Assembly version and File version to 1.4.5.0.
+Close the Properties tab.
+
+Step 4: Update the Setup Installer Version
+Click once on your Rehoboth Media setup project to highlight it.
+Look at the Properties window in the bottom right corner of your screen.
+Change the Version property to 1.4.5 and press Enter.
+When the popup asks "Would you like to change the ProductCode?", CLICK YES.
+
+Ensure RemovePreviousVersions is set to True.
+
+Step 5: Update the Splash Screen Text
+Open SplashScreen.xaml.
+Scroll to the bottom and change <TextBlock Grid.Column="1" Text="v1.4.0"... to v1.4.5.
+
+Step 6: The Final Build & Export!
+Look at the dropdown menu at the very top of Visual Studio. Make sure it is set to Release (NOT Debug!).
+Right-click the RehobothMediaPro project -> click Rebuild. (Wait for "Succeeded").
+Right-click the Rehoboth Media setup project -> click Build. (Wait for "Succeeded").
